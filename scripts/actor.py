@@ -22,14 +22,10 @@ class Actor:
         """move towards the goal
         """
         
-        if self.next_goal == None:
-            if len(self.path) == 0:
-                return
-            self.next_goal = self.path[0]
-
-        # if self.next_goal.location == [0, 0]:
-        #     if not (len(self.path) == 0):
-        #         self.next_goal = self.path[0]
+        # if self.next_goal == None:
+        if len(self.path) == 0:
+            return
+        self.next_goal = self.path[0]
 
         dir = [
             self.next_goal.location[0] - self.pos[0],
@@ -40,16 +36,9 @@ class Actor:
             dir[0]*dir[0] + dir[1]*dir[1]
         )
 
-        if (dist < DISTANCE_TOLERANCE):
-            # if (len(self.path) == 0):
-            #     self.servicing = False
-            #     self.reached_goal = False
-            #     self.is_free = True
-            #     self.next_goal = Task([0,0], -1, 0)
-            #     return
-            
+        if (dist < DISTANCE_TOLERANCE):            
             if (len(self.path) >= 1):
-                print("[" + str(sim_time) + "]: " + "Arrived at service location at " + str(self.next_goal.location))
+                print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.next_goal.location))
                 self.servicing = True
                 self.time_arrived = sim_time
                 
@@ -77,13 +66,11 @@ class Actor:
         """
         if (self.servicing == True):
             if (sim_time - self.time_arrived >= self.next_goal.service_time):
-                print("[{0}]: Service done at location: {1}".format(str(sim_time), str(self.next_goal.location)))
                 self.servicing = False
                 self.next_goal.service_time = sim_time
                 finished_task = self.next_goal
                 self.next_goal = None
-            return finished_task
-
+                return finished_task
 
         self._move(sim_time)
         return 
