@@ -216,7 +216,7 @@ class Simulation:
         """
         if (self.sim_time - self.time_last_arrival > self.next_time):
             self._draw_task()
-            self.actor_list = self._policy(self.actor_list, self.task_list)
+            self.actor_list = self._policy(self.actor_list, self.task_list, self.sim_time)
 
         #  draw the limits of the environment
         pygame.draw.rect(self.screen, 

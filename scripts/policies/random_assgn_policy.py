@@ -18,7 +18,7 @@ def rnd_assgn_policy_return(actors, tasks):
     return actors
 
 
-def rnd_assgn_policy_no_return(actors, tasks):
+def rnd_assgn_policy_no_return(actors, tasks, current_time = 0):
     for actor in actors:
         actor.path = []
 

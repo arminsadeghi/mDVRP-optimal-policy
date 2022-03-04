@@ -1,6 +1,7 @@
 
 from policies.random_assgn_policy import rnd_assgn_policy_no_return, rnd_assgn_policy_return
 from policies.tsp_policy import tsp_policy
+from policies.mod_tsp_policy import modified_tsp_policy
 from simulation import Simulation
 from config import *
 import pygame  
@@ -24,6 +25,9 @@ def main():
     
     if POLICY_NAME == "TSP":
         policy = tsp_policy
+    
+    if POLICY_NAME == "TSP_MOD":
+        policy = modified_tsp_policy
     
 
     sim = Simulation(
