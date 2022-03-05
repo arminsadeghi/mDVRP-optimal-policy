@@ -1,8 +1,4 @@
 import argparse
-
-# from policies.random_assgn_policy import rnd_assgn_policy_no_return, rnd_assgn_policy_return
-# from policies.tsp_policy import tsp_policy
-# from policies.mod_tsp_policy import modified_tsp_policy
 from random import seed
 from simulation import Simulation
 from config import *
@@ -10,15 +6,17 @@ import pygame
 
 from importlib import import_module
 
-
 def main(args):
 
-    pygame.init()
-    screen = pygame.display.set_mode((args.height, args.width))
-    pygame.display.set_caption('Simulation')
+    if args.show_sim:
+      pygame.init()
+      screen = pygame.display.set_mode((args.height, args.width))
+      pygame.display.set_caption('Simulation')
 
-    clock = pygame.time.Clock()
-    pygame.font.init()
+      clock = pygame.time.Clock()
+      pygame.font.init()
+    else:
+      screen = None
 
     # set the seed
     if args.seed is not None:
@@ -28,24 +26,41 @@ def main(args):
         policy_name=args.policy,
         num_actors=args.actors,
         pois_lambda=args.lambd,
-        screen=screen)
+        screen=screen,
+        show_sim=args.show_sim)
 
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return
-        screen.fill((0, 0, 0))
+        if args.show_sim:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+            screen.fill((0, 0, 0))
         rval = sim.tick(args.tick_time, args.max_time)
         if rval == -1:
             break
-        pygame.display.flip()
-        pygame.display.update()
-        clock.tick(1.0/args.tick_time*args.simulation_speed)
+            
+        if args.show_sim:
+            pygame.display.flip()
+            pygame.display.update()
+            clock.tick(1.0/args.tick_time*args.simulation_speed)
 
     if len(sim.serviced_tasks) > 0:
         print("Average service time:", sim._avg_served_time/len(sim.serviced_tasks))
     print("Total serviced:", len(sim.serviced_tasks))
+    return sim
 
+
+def multiple_sims( args ):
+    f = open("scripts/res_" + args.policy + ".txt", "a")
+    for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8 , 0.9]:
+        print("================= LAMBDA: {:.2f} =================".format(lam))
+        args.lambd = lam
+        sim = simulate(args)
+        f.write(
+            str(lam) + "," + str(sim._avg_served_time)+ "," + str(sim._curr_max_time) +\
+                 "," + str(len(sim.serviced_tasks))+ "," + str(sim._max_served_time) + "," +  str(sim._avg_served_time/ len(sim.serviced_tasks))+ "\n"
+        )
+    f.close()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
@@ -104,6 +119,15 @@ if __name__ == "__main__":
         default=MAX_SIMULATION_TIME,
         type=float,
         help='Maximum Length of Simulation')
+    argparser.add_argument(
+        '--max-tasks',
+        default=MAX_SERVICED_TASKS,
+        type=int,
+        help='Maximum number of Tasks to service')
+    argparser.add_argument(
+        '--show_sim',
+        default=False,
+        help='Display the simulation window')
 
     args = argparser.parse_args()
 
