@@ -6,17 +6,18 @@ import pygame
 
 from importlib import import_module
 
-def main(args):
+
+def simulate(args):
 
     if args.show_sim:
-      pygame.init()
-      screen = pygame.display.set_mode((args.height, args.width))
-      pygame.display.set_caption('Simulation')
+        pygame.init()
+        screen = pygame.display.set_mode((args.height, args.width))
+        pygame.display.set_caption('Simulation')
 
-      clock = pygame.time.Clock()
-      pygame.font.init()
+        clock = pygame.time.Clock()
+        pygame.font.init()
     else:
-      screen = None
+        screen = None
 
     # set the seed
     if args.seed is not None:
@@ -38,7 +39,7 @@ def main(args):
         rval = sim.tick(args.tick_time, args.max_time)
         if rval == -1:
             break
-            
+
         if args.show_sim:
             pygame.display.flip()
             pygame.display.update()
@@ -50,17 +51,18 @@ def main(args):
     return sim
 
 
-def multiple_sims( args ):
+def multiple_sims(args):
     f = open("scripts/res_" + args.policy + ".txt", "a")
-    for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8 , 0.9]:
+    for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
         print("================= LAMBDA: {:.2f} =================".format(lam))
         args.lambd = lam
         sim = simulate(args)
         f.write(
-            str(lam) + "," + str(sim._avg_served_time)+ "," + str(sim._curr_max_time) +\
-                 "," + str(len(sim.serviced_tasks))+ "," + str(sim._max_served_time) + "," +  str(sim._avg_served_time/ len(sim.serviced_tasks))+ "\n"
+            str(lam) + "," + str(sim._avg_served_time) + "," + str(sim._curr_max_time) +
+            "," + str(len(sim.serviced_tasks)) + "," + str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "\n"
         )
     f.close()
+
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
@@ -125,10 +127,10 @@ if __name__ == "__main__":
         type=int,
         help='Maximum number of Tasks to service')
     argparser.add_argument(
-        '--show_sim',
-        default=False,
+        '--show-sim',
+        action='store_true',
         help='Display the simulation window')
 
     args = argparser.parse_args()
 
-    main(args)
+    multiple_sims(args)
