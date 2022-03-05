@@ -1,13 +1,15 @@
 from actor import Actor
 from config import *
-from random import random, expovariate
+from random import random, expovariate, seed
 from Task import Task
 import pygame
 from policies.random_assgn_policy import rnd_assgn_policy_return
 
+seed(10)
 
 class Simulation:
-    def __init__(self, num_actors =1, pois_lambda = 0.01, screen=None, policy = rnd_assgn_policy_return):
+    def __init__(self, num_actors =1, pois_lambda = 0.01, screen=None, policy = rnd_assgn_policy_return,
+    show_sim=True):
         self.num_actors = num_actors
         self.actor_list = [
             Actor(
@@ -25,8 +27,10 @@ class Simulation:
         self.time_last_arrival = 0
         self.next_time = expovariate(self.pois_lambda)
         self.screen = screen
-        self.sim_time_text = pygame.font.SysFont('dejavuserif', 15)
-        self.elapsed_time_text = pygame.font.SysFont('dejavuserif', 10)
+        if show_sim == True:
+            self.sim_time_text = pygame.font.SysFont('dejavuserif', 15)
+            self.elapsed_time_text = pygame.font.SysFont('dejavuserif', 10)
+            
         self.sim_start_time = 0
         self._margin = MARGIN
         self._env_size =  SCREEN_WIDTH - self._margin
@@ -35,6 +39,7 @@ class Simulation:
         self._max_served_time = -1
         self._curr_max_time = -1
         self._avg_served_time = 0
+        self._show_sim = show_sim
 
     
     def _get_current_max_time(self):
@@ -218,27 +223,34 @@ class Simulation:
             self._draw_task()
             self.actor_list = self._policy(self.actor_list, self.task_list, self.sim_time)
 
-        #  draw the limits of the environment
-        pygame.draw.rect(self.screen, 
-            (255,  255,  255), 
-            (self._margin, self._margin, self._env_size, self._env_size), 2)
+        if self._show_sim == True:
+            #  draw the limits of the environment
+            pygame.draw.rect(self.screen, 
+                (255,  255,  255), 
+                (self._margin, self._margin, self._env_size, self._env_size), 2)
 
         # one clock tick for the simulation time
         self.sim_time += TICK_TIME
 
-        if self.sim_time > MAX_SIMULATION_TIME:
+        # if self.sim_time > MAX_SIMULATION_TIME:
+        #     return -1
+
+        if len(self.serviced_tasks) >= MAX_SERVICED_TASKS:
             return -1
 
-        self._plot_tasks()
-        if self.screen == None:
+        if self._show_sim:
+            self._plot_tasks()
+        
+        if self.screen == None and self._show_sim == True:
             print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
             return
 
         for actor_index in range(len(self.actor_list)):
             self._tick_each_actor(actor_index)
-            self._draw_actor_path(actor_index)
-            self._show_actor_pos(actor_index)
-
-        self._show_sim_info()
+            if self._show_sim == True:
+                self._draw_actor_path(actor_index)
+                self._show_actor_pos(actor_index)
+        if self._show_sim == True:
+            self._show_sim_info()
         return 1
         

@@ -7,14 +7,18 @@ from config import *
 import pygame  
 
 
-def main():
+def simulate(arrival_rate = LAMBDA):
     
-    pygame.init()  
-    screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_WIDTH))  
-    pygame.display.set_caption('Simulation')
-      
-    clock = pygame.time.Clock()
-    pygame.font.init()
+    
+    if SHOW_SIM == True:
+        pygame.init()  
+        screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_WIDTH))  
+        pygame.display.set_caption('Simulation')
+        
+        clock = pygame.time.Clock()
+        pygame.font.init()
+    else:
+        screen = None    
 
 
     if POLICY_NAME == "RND_NO_RETURN":
@@ -32,27 +36,43 @@ def main():
 
     sim = Simulation(
         num_actors=NUM_ACTORS, 
-        pois_lambda=LAMBDA, 
+        pois_lambda=arrival_rate, 
         screen=screen,
-        policy=policy)
+        policy=policy,
+        show_sim=SHOW_SIM)
    
     
     while True:  
-        for event in pygame.event.get():  
-            if event.type == pygame.QUIT:  
-                return
-        screen.fill((0, 0, 0))
+        if SHOW_SIM == True:
+            for event in pygame.event.get():  
+                if event.type == pygame.QUIT:  
+                    return
+            screen.fill((0, 0, 0))
         rval = sim.tick()
         if rval == -1:
             break
-        pygame.display.flip()
-        pygame.display.update()
-        clock.tick(1.0/TICK_TIME*SIMULATION_SPEED)
+
+        if SHOW_SIM == True:
+            pygame.display.flip()
+            pygame.display.update()
+            clock.tick(1.0/TICK_TIME*SIMULATION_SPEED)
     
     if len(sim.serviced_tasks) > 0:
         print("Average service time:", sim._avg_served_time/len(sim.serviced_tasks))
     print("Total serviced:", len(sim.serviced_tasks))
+    return sim
 
+
+def multiple_sims():
+    f = open("scripts/res_" + POLICY_NAME+ ".txt", "a")
+    for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8 , 0.9]:
+        print("================= LAMBDA: {:.2f} =================".format(lam))
+        sim = simulate(arrival_rate=lam)
+        f.write(
+            str(lam) + "," + str(sim._avg_served_time)+ "," + str(sim._curr_max_time) +\
+                 "," + str(len(sim.serviced_tasks))+ "," + str(sim._max_served_time) + "," +  str(sim._avg_served_time/ len(sim.serviced_tasks))+ "\n"
+        )
+    f.close()
 
 if __name__ == "__main__":
-    main()
+    multiple_sims()

@@ -3,7 +3,7 @@ TSP policy that find the optimal multi robot TSP on the unserviced tasks
 '''
 from copy import deepcopy
 from policies.util import get_ditance_matrix, assign_tours_to_actors
-from random import randint, shuffle
+from random import randint, shuffle, random
 from time import time 
 from config import SERVICE_TIME
 
@@ -116,6 +116,27 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_ind
                 best_index + 1, vertex
             )
     return tours
+
+
+def rnd_insertion(tours, deleted_vertices):
+
+    shuffle(deleted_vertices)
+    for vertex in deleted_vertices:
+        rnd_tour = randint(0, len(tours) - 1)
+        n = len(tours[rnd_tour]) - 1
+
+        if n == 0:
+            tours[rnd_tour].append(vertex)
+            continue
+        
+        rnd_loc = randint(1, n)
+
+        if rnd_loc == n:
+            tours[rnd_tour].append(vertex)
+        else:
+            tours[rnd_tour].insert(rnd_loc, vertex)
+    return tours
+
                 
     
 def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time):
@@ -146,7 +167,12 @@ def modified_tsp_policy(actors, tasks, current_time, max_solver_time = 30):
     while time() - s_time < max_solver_time:
         candidate_tours = deepcopy(tours)
         deleted_vertices, candidate_tours = random_deletion(candidate_tours, p = 2)
-        candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time)        
+
+        if random() < 0.8:
+            candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time)
+        else:
+            candidate_tours = rnd_insertion(candidate_tours, deleted_vertices)
+
         candidate_tour_cost = total_tour_cost(candidate_tours, distance_matrix, tasks, task_indices, current_time)
         if candidate_tour_cost < best_cost:
             best_cost = candidate_tour_cost
