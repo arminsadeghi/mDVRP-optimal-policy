@@ -5,6 +5,7 @@ from config import *
 import pygame
 
 from importlib import import_module
+from os import path, mkdir
 
 
 def simulate(args):
@@ -52,7 +53,11 @@ def simulate(args):
 
 
 def multiple_sims(args):
-    f = open("scripts/res_" + args.policy + ".txt", "a")
+
+    if not path.isdir('results'):
+        mkdir(RESULTS_DIR)
+
+    f = open(path.join(RESULTS_DIR, "res_" + args.policy + ".txt"), "a")
     for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
         print("================= LAMBDA: {:.2f} =================".format(lam))
         args.lambd = lam
