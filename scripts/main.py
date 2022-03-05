@@ -1,73 +1,61 @@
-
-from policies.random_assgn_policy import rnd_assgn_policy_no_return, rnd_assgn_policy_return
-from policies.tsp_policy import tsp_policy
-from policies.mod_tsp_policy import modified_tsp_policy
+import argparse
+from random import seed
 from simulation import Simulation
 from config import *
-import pygame  
+import pygame
 
+from importlib import import_module
 
-def simulate(arrival_rate = LAMBDA):
-    
-    
-    if SHOW_SIM == True:
-        pygame.init()  
-        screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_WIDTH))  
-        pygame.display.set_caption('Simulation')
-        
-        clock = pygame.time.Clock()
-        pygame.font.init()
+def main(args):
+
+    if args.show_sim:
+      pygame.init()
+      screen = pygame.display.set_mode((args.height, args.width))
+      pygame.display.set_caption('Simulation')
+
+      clock = pygame.time.Clock()
+      pygame.font.init()
     else:
-        screen = None    
+      screen = None
 
-
-    if POLICY_NAME == "RND_NO_RETURN":
-        policy = rnd_assgn_policy_no_return
-    
-    if POLICY_NAME == "RND_RETURN":
-        policy = rnd_assgn_policy_return
-    
-    if POLICY_NAME == "TSP":
-        policy = tsp_policy
-    
-    if POLICY_NAME == "TSP_MOD":
-        policy = modified_tsp_policy
-    
+    # set the seed
+    if args.seed is not None:
+        seed(args.seed)
 
     sim = Simulation(
-        num_actors=NUM_ACTORS, 
-        pois_lambda=arrival_rate, 
+        policy_name=args.policy,
+        num_actors=args.actors,
+        pois_lambda=args.lambd,
         screen=screen,
-        policy=policy,
-        show_sim=SHOW_SIM)
-   
-    
-    while True:  
-        if SHOW_SIM == True:
-            for event in pygame.event.get():  
-                if event.type == pygame.QUIT:  
+        show_sim=args.show_sim)
+
+    while True:
+        if args.show_sim:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
                     return
             screen.fill((0, 0, 0))
-        rval = sim.tick()
+        rval = sim.tick(args.tick_time, args.max_time)
         if rval == -1:
             break
-
-        if SHOW_SIM == True:
+            
+        if args.show_sim:
             pygame.display.flip()
             pygame.display.update()
-            clock.tick(1.0/TICK_TIME*SIMULATION_SPEED)
-    
+            clock.tick(1.0/args.tick_time*args.simulation_speed)
+
     if len(sim.serviced_tasks) > 0:
         print("Average service time:", sim._avg_served_time/len(sim.serviced_tasks))
     print("Total serviced:", len(sim.serviced_tasks))
     return sim
 
 
-def multiple_sims():
-    f = open("scripts/res_" + POLICY_NAME+ ".txt", "a")
+def multiple_sims( args ):
+    f = open("scripts/res_" + args.policy + ".txt", "a")
     for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8 , 0.9]:
         print("================= LAMBDA: {:.2f} =================".format(lam))
-        sim = simulate(arrival_rate=lam)
+        args.lambd = lam
+        sim = simulate(args)
         f.write(
             str(lam) + "," + str(sim._avg_served_time)+ "," + str(sim._curr_max_time) +\
                  "," + str(len(sim.serviced_tasks))+ "," + str(sim._max_served_time) + "," +  str(sim._avg_served_time/ len(sim.serviced_tasks))+ "\n"
@@ -75,4 +63,72 @@ def multiple_sims():
     f.close()
 
 if __name__ == "__main__":
-    multiple_sims()
+    argparser = argparse.ArgumentParser(
+        description=__doc__)
+    argparser.add_argument(
+        '--height',
+        default=SCREEN_HEIGHT,
+        type=int,
+        help='Screen vertical size')
+    argparser.add_argument(
+        '--width',
+        default=SCREEN_WIDTH,
+        type=int,
+        help='Screen horizontal size')
+    argparser.add_argument(
+        '--margin',
+        default=SCREEN_MARGIN,
+        type=int,
+        help='Screen horizontal size')
+    argparser.add_argument(
+        '-s', '--seed',
+        default=None,
+        type=float,
+        help='Random Seed')
+    argparser.add_argument(
+        '-l', '--lambd',
+        default=LAMBDA,
+        type=float,
+        help='Exponential Spawn rate for Tasks')
+    argparser.add_argument(
+        '-a', '--actors',
+        default=NUM_ACTORS,
+        type=int,
+        help='Number of actors in the simulation')
+    argparser.add_argument(
+        '-p', '--policy',
+        default=DEFAULT_POLICY_NAME,
+        help='Policy to use')
+    argparser.add_argument(
+        '--service-time',
+        default=SERVICE_TIME,
+        type=float,
+        help='Service time on arrival at each node')
+    argparser.add_argument(
+        '--simulation_speed',
+        default=SIMULATION_SPEED,
+        type=float,
+        help='Simulator speed')
+    argparser.add_argument(
+        '-t', '--tick_time',
+        default=TICK_TIME,
+        type=float,
+        help='Length of Simulation Time Step')
+    argparser.add_argument(
+        '--max-time',
+        default=MAX_SIMULATION_TIME,
+        type=float,
+        help='Maximum Length of Simulation')
+    argparser.add_argument(
+        '--max-tasks',
+        default=MAX_SERVICED_TASKS,
+        type=int,
+        help='Maximum number of Tasks to service')
+    argparser.add_argument(
+        '--show_sim',
+        default=False,
+        help='Display the simulation window')
+
+    args = argparser.parse_args()
+
+    main(args)
