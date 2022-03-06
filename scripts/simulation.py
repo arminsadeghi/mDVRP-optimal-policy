@@ -174,8 +174,6 @@ class Simulation:
         if time > self._max_served_time:
             self._max_served_time = time
 
-        self._avg_served_time += time
-
         #  set the task to be serviced
         self.task_list[rval.id].serviced = True
         print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
