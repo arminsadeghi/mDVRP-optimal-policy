@@ -1,4 +1,6 @@
 import imp
+
+from matplotlib.pyplot import show
 from actor import Actor
 from config import *
 from random import random, expovariate, seed
@@ -8,10 +10,11 @@ from importlib import import_module
 
 seed(10)
 
+
 class Simulation:
     def __init__(self, policy_name, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                show_sim=True):
+                 show_sim=True):
         self.num_actors = num_actors
         self.actor_list = [
             Actor(
@@ -29,10 +32,11 @@ class Simulation:
         self.time_last_arrival = 0
         self.next_time = expovariate(self.pois_lambda)
         self.screen = screen
+        self._show_sim = show_sim
         if show_sim == True:
             self.sim_time_text = pygame.font.SysFont('dejavuserif', 15)
             self.elapsed_time_text = pygame.font.SysFont('dejavuserif', 10)
-            
+
         self.sim_start_time = 0
         self.service_time = service_time
         self._margin = margin
@@ -47,7 +51,6 @@ class Simulation:
         self._max_served_time = -1
         self._curr_max_time = -1
         self._avg_served_time = 0
-        self._show_sim = show_sim
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
@@ -228,9 +231,9 @@ class Simulation:
 
         if self._show_sim == True:
             #  draw the limits of the environment
-            pygame.draw.rect(self.screen, 
-                (255,  255,  255), 
-                (self._margin, self._margin, self._env_size, self._env_size), 2)
+            pygame.draw.rect(self.screen,
+                             (255,  255,  255),
+                             (self._margin, self._margin, self._env_size, self._env_size), 2)
 
         # one clock tick for the simulation time
         self.sim_time += tick_time
@@ -243,7 +246,7 @@ class Simulation:
 
         if self._show_sim:
             self._plot_tasks()
-        
+
         if self.screen == None and self._show_sim == True:
             print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
             return
@@ -253,6 +256,8 @@ class Simulation:
             if self._show_sim == True:
                 self._draw_actor_path(actor_index)
                 self._show_actor_pos(actor_index)
-        if self._show_sim == True:
+
+        if self._show_sim:
             self._show_sim_info()
+
         return 1
