@@ -222,7 +222,7 @@ class Simulation:
             + str(round(actor.pos[1], 2)), False, (255, 255, 255))
         self.screen.blit(sim_time_text, (10, 40 + actor_index*20))
 
-    def tick(self, tick_time, max_simulation_time):
+    def tick(self, tick_time, max_simulation_time=None, max_serviced_tasks=MAX_SERVICED_TASKS):
         """[summary]
         """
         if (self.sim_time - self.time_last_arrival > self.next_time):
@@ -238,8 +238,12 @@ class Simulation:
         # one clock tick for the simulation time
         self.sim_time += tick_time
 
-        # if self.sim_time > MAX_SIMULATION_TIME:
-        #     return -1
+        if max_simulation_time is not None:
+            if self.sim_time > max_simulation_time:
+                return -1
+        else:
+            if len(self.serviced_tasks) >= max_serviced_tasks:
+                return -1
 
         if len(self.serviced_tasks) >= MAX_SERVICED_TASKS:
             return -1
@@ -249,7 +253,7 @@ class Simulation:
 
         if self.screen == None and self._show_sim == True:
             print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
-            return
+            return -1
 
         for actor_index in range(len(self.actor_list)):
             self._tick_each_actor(actor_index)
