@@ -2,7 +2,7 @@
 TSP policy that find the optimal multi robot TSP on the unserviced tasks
 '''
 from copy import deepcopy
-from policies.util import get_ditance_matrix, assign_tours_to_actors
+from policies.util import get_distance_matrix, assign_tours_to_actors
 from random import randint, shuffle
 from time import time
 
@@ -61,7 +61,7 @@ def random_deletion(tours, p=1):
     return deleted_vertices, candidate_tour
 
 
-def min_cost_insertion(tours, deleted_vertices, ditance_matrix):
+def min_cost_insertion(tours, deleted_vertices, distance_matrix):
     min_cost = LARGE_NUMBER
 
     shuffle(deleted_vertices)
@@ -70,15 +70,15 @@ def min_cost_insertion(tours, deleted_vertices, ditance_matrix):
         best_index = len(tours[0])
         for _i in range(len(tours)):
             for _j in range(len(tours[_i]) - 1):
-                insertion_cost = ditance_matrix[(
+                insertion_cost = distance_matrix[(
                     tours[_i][_j], vertex
                 )]
 
-                insertion_cost += ditance_matrix[(
+                insertion_cost += distance_matrix[(
                     tours[_i][_j + 1], vertex
                 )]
 
-                insertion_cost -= ditance_matrix[(
+                insertion_cost -= distance_matrix[(
                     tours[_i][_j], tours[_i][_j + 1]
                 )]
 
@@ -89,7 +89,7 @@ def min_cost_insertion(tours, deleted_vertices, ditance_matrix):
 
             # check the cost of appending
             _j = len(tours[_i]) - 1
-            insertion_cost = ditance_matrix[(
+            insertion_cost = distance_matrix[(
                 tours[_i][_j], vertex
             )]
             if insertion_cost < min_cost:
@@ -121,7 +121,7 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0):
         tasks (_type_): the tasks arrived
     """
 
-    distance_matrix, task_indices = get_ditance_matrix(actors, tasks)
+    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)
 
     best_tours = random_task_assignment(tours, len(task_indices))
