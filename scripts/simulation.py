@@ -51,6 +51,8 @@ class Simulation:
         self._max_served_time = -1
         self._curr_max_time = -1
         self._avg_served_time = 0
+        self._total_travel_distance = 0
+        self._max_travel_distance = 0
 
         # preload all the the tasks
         self._draw_all_tasks(max_time=max_time, max_tasks=max_tasks)
@@ -217,8 +219,7 @@ class Simulation:
         """
         actor = self.actor_list[actor_index]
         sim_time_text = self.sim_time_text.render(
-            "Actor " + str(actor_index + 1) + " Pos: " + str(round(actor.pos[0], 2)) + ","
-            + str(round(actor.pos[1], 2)), False, (255, 255, 255))
+            "Actor {:d} - Pos: ({:03.2f}{:03.2f}) - Dist: {: 5.3f}".format(actor_index + 1, actor.pos[0], actor.pos[1], actor.travel_dist), False, (255, 255, 255))
         self.screen.blit(sim_time_text, (10, 40 + actor_index*20))
 
     ##################################################################################
@@ -245,8 +246,6 @@ class Simulation:
 
         if time > self._max_served_time:
             self._max_served_time = time
-
-        self._avg_served_time += time
 
         #  set the task to be serviced
         self.task_list[rval.id].serviced = True
@@ -288,8 +287,13 @@ class Simulation:
             print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
             return
 
+        self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
             self._tick_each_actor(actor_index)
+            self._total_travel_distance += self.actor_list[actor_index].travel_dist
+            if self.actor_list[actor_index].travel_dist > self._max_travel_distance:
+                self._max_travel_distance = self.actor_list[actor_index].travel_dist
+
             if self._show_sim == True:
                 self._draw_actor_path(actor_index)
                 self._show_actor_pos(actor_index)
