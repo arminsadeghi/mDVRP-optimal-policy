@@ -29,7 +29,10 @@ def simulate(args):
         num_actors=args.actors,
         pois_lambda=args.lambd,
         screen=screen,
-        show_sim=args.show_sim)
+        show_sim=args.show_sim,
+        max_tasks=args.max_tasks,
+        max_time=args.max_time
+    )
 
     while True:
         if args.show_sim:
@@ -37,7 +40,7 @@ def simulate(args):
                 if event.type == pygame.QUIT:
                     return
             screen.fill((0, 0, 0))
-        rval = sim.tick(args.tick_time, args.max_time)
+        rval = sim.tick(args.tick_time, args.max_time, args.max_tasks)
         if rval == -1:
             break
 
@@ -123,7 +126,7 @@ if __name__ == "__main__":
         help='Length of Simulation Time Step')
     argparser.add_argument(
         '--max-time',
-        default=MAX_SIMULATION_TIME,
+        default=None,
         type=float,
         help='Maximum Length of Simulation')
     argparser.add_argument(

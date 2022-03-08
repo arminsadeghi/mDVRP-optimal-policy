@@ -14,7 +14,7 @@ seed(10)
 class Simulation:
     def __init__(self, policy_name, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 show_sim=True):
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True):
         self.num_actors = num_actors
         self.actor_list = [
             Actor(
@@ -52,6 +52,9 @@ class Simulation:
         self._curr_max_time = -1
         self._avg_served_time = 0
 
+        # preload all the the tasks
+        self._draw_all_tasks(max_time=max_time, max_tasks=max_tasks)
+
     def _get_current_max_time(self):
         """get the wait time of unserviced task
         """
@@ -62,29 +65,42 @@ class Simulation:
             time = self.sim_time - task.time
             if time > max_time:
                 max_time = time
+            else:
+                # future tasks -- can stop looking
+                break
         self._curr_max_time = max_time
 
-    def _draw_task(self):
-        """draw the task according to Poisson arrival process
+    def _draw_all_tasks(self, max_time=None, max_tasks=MAX_SERVICED_TASKS):
         """
-        self.next_time = expovariate(self.pois_lambda)
-        new_task = Task(
-            id=len(self.task_list),
-            location=[2*random() - 1, 2*random() - 1],
-            time=self.sim_time,
-        )
-        self.task_list.append(new_task)
-        self.time_last_arrival = self.sim_time
-
-        print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), new_task.location))
-
-    def _assign_new_task(self, new_task):
-        """[summary]
-
-        Args:
-            new_task ([type]): [description]
+        Draw all of the tasks for the simulation according to the defined max time or max serviced tasks
+        requested.  Note that we are drawing the time for the next task to be inserted, assuming that we
+        are inserting one now.
         """
-        self.actor_list[0].path.append(new_task)
+
+        sim_time = self.next_time
+        while True:
+            next_time = expovariate(self.pois_lambda)
+            new_task = Task(
+                id=len(self.task_list),
+                location=[2*random() - 1, 2*random() - 1],
+                time=sim_time,
+            )
+            self.task_list.append(new_task)
+            sim_time += next_time
+
+            if max_time is not None:
+                if sim_time > max_time:
+                    break
+            else:
+                if len(self.task_list) >= max_tasks:
+                    break
+
+        # create an index into the list of tasks
+        self.next_task = 0
+
+    ############################################################################
+    # Plotting and drawing functions
+    ############################################################################
 
     def _get_location_on_screen(self, location):
         return [
@@ -100,19 +116,29 @@ class Simulation:
     def _plot_tasks(self):
         """_summary_
         """
-        for task in self.task_list:
+        for task in self.task_list[::-1]:
 
-            if task.serviced == True:
+            if task.serviced:
                 continue
 
             task_loc_screen = self._get_location_on_screen(task.location)
+
+            if task.time > self.sim_time:
+                b = 40 + int(215.0 * 1.0 / max(1, task.time - self.sim_time))
+                g = 0
+                r = 0
+            else:
+                r = 255
+                g = 0
+                b = 0
+
             self._draw_rect(
                 location=task_loc_screen,
-                color=(255, 0, 0),
+                color=(r, g, b),
                 size=10
             )
             elapsed_time_text = self.elapsed_time_text.render(
-                str(round(self.sim_time - task.time, 2)), False, (255, 255, 255))
+                str(round(self.sim_time - task.time, 2)), False, (r, g, b))
             self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
 
     def _draw_actor_path(self, actor_index):
@@ -152,33 +178,6 @@ class Simulation:
             elapsed_time_text = self.elapsed_time_text.render(
                 str(round(self.sim_time - self.actor_list[actor_index].next_goal.time, 2)), False, (255, 255, 255))
             self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
-
-    def _tick_each_actor(self, actor_index):
-        """step of simulation for each actor
-
-        Args:
-            actor_index (_type_): the index of the actor
-        """
-        rval = self.actor_list[actor_index].tick(round(self.sim_time, 2))
-
-        if rval == None:
-            return
-
-        if rval.id == -1:
-            return
-
-        self.serviced_tasks.append(rval.id)
-        time = rval.service_time - rval.time
-        self._avg_served_time += time
-
-        if time > self._max_served_time:
-            self._max_served_time = time
-
-        self._avg_served_time += time
-
-        #  set the task to be serviced
-        self.task_list[rval.id].serviced = True
-        print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
 
     def _show_sim_info(self):
         try:
@@ -222,12 +221,50 @@ class Simulation:
             + str(round(actor.pos[1], 2)), False, (255, 255, 255))
         self.screen.blit(sim_time_text, (10, 40 + actor_index*20))
 
-    def tick(self, tick_time, max_simulation_time):
+    ##################################################################################
+    # Simulator step functions
+    ##################################################################################
+
+    def _tick_each_actor(self, actor_index):
+        """step of simulation for each actor
+
+        Args:
+            actor_index (_type_): the index of the actor
+        """
+        rval = self.actor_list[actor_index].tick(round(self.sim_time, 2))
+
+        if rval == None:
+            return
+
+        if rval.id == -1:
+            return
+
+        self.serviced_tasks.append(rval.id)
+        time = rval.service_time - rval.time
+        self._avg_served_time += time
+
+        if time > self._max_served_time:
+            self._max_served_time = time
+
+        self._avg_served_time += time
+
+        #  set the task to be serviced
+        self.task_list[rval.id].serviced = True
+        self.task_list[rval.id].time_serviced = self.sim_time
+        print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
+
+    def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
         """
-        if (self.sim_time - self.time_last_arrival > self.next_time):
-            self._draw_task()
-            self.actor_list = self._policy(self.actor_list, self.task_list, self.sim_time, self.service_time)
+        if self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
+            while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
+                if self.next_task > len(self.task_list) - 1:
+                    break
+                print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
+                self.next_task += 1
+
+            self.actor_list = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
+                                           current_time=self.sim_time, service_time=self.service_time)
 
         if self._show_sim == True:
             #  draw the limits of the environment
@@ -241,7 +278,7 @@ class Simulation:
         # if self.sim_time > MAX_SIMULATION_TIME:
         #     return -1
 
-        if len(self.serviced_tasks) >= MAX_SERVICED_TASKS:
+        if len(self.serviced_tasks) >= max_tasks:
             return -1
 
         if self._show_sim:
