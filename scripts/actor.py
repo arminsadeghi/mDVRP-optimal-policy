@@ -57,7 +57,6 @@ class Actor:
                 print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.next_goal.location))
                 self.servicing = True
                 self.time_arrived = sim_time
-                del self.path[0]
 
         return
 
@@ -70,6 +69,8 @@ class Actor:
                 self.next_goal.service_time = sim_time
                 finished_task = self.next_goal
                 self.next_goal = None
+                del self.path[0]
+
                 return finished_task
         else:
             self._move(sim_time)
