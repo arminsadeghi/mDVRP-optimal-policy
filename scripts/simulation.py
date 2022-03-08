@@ -240,17 +240,17 @@ class Simulation:
         if rval.id == -1:
             return
 
-        self.serviced_tasks.append(rval.id)
-        time = rval.service_time - rval.time
-        self._avg_served_time += time
-
-        if time > self._max_served_time:
-            self._max_served_time = time
-
         #  set the task to be serviced
         self.task_list[rval.id].serviced = True
         self.task_list[rval.id].time_serviced = self.sim_time
         print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
+        self.serviced_tasks.append(rval.id)
+
+        # record stats
+        time = self.sim_time - rval.time
+        self._avg_served_time += time
+        if time > self._max_served_time:
+            self._max_served_time = time
 
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]

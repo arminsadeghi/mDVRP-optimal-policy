@@ -57,20 +57,23 @@ class Actor:
                 print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.next_goal.location))
                 self.servicing = True
                 self.time_arrived = sim_time
+                del self.path[0]
 
         return
 
     def tick(self, sim_time):
         """a time step
         """
+
+        finished_task = None
+
         if (self.servicing == True):
             if (sim_time - self.time_arrived >= self.next_goal.service_time):
                 self.servicing = False
-                self.next_goal.service_time = sim_time
                 finished_task = self.next_goal
                 self.next_goal = None
-                del self.path[0]
+            else:
+                return
 
-                return finished_task
-        else:
-            self._move(sim_time)
+        self._move(sim_time)
+        return finished_task
