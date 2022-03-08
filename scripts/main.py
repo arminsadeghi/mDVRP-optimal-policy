@@ -29,7 +29,10 @@ def simulate(args):
         num_actors=args.actors,
         pois_lambda=args.lambd,
         screen=screen,
-        show_sim=args.show_sim)
+        show_sim=args.show_sim,
+        max_tasks=args.max_tasks,
+        max_time=args.max_time
+    )
 
     while True:
         if args.show_sim:
@@ -37,7 +40,7 @@ def simulate(args):
                 if event.type == pygame.QUIT:
                     return
             screen.fill((0, 0, 0))
-        rval = sim.tick(args.tick_time, args.max_time)
+        rval = sim.tick(tick_time=args.tick_time, max_simulation_time=args.max_time, max_tasks=args.max_tasks)
         if rval == -1:
             break
 
@@ -57,15 +60,27 @@ def multiple_sims(args):
     if not path.isdir('results'):
         mkdir(RESULTS_DIR)
 
-    f = open(path.join(RESULTS_DIR, "res_" + args.policy + ".txt"), "a")
-    for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
-        print("================= LAMBDA: {:.2f} =================".format(lam))
-        args.lambd = lam
-        sim = simulate(args)
-        f.write(
-            str(lam) + "," + str(sim._avg_served_time) + "," + str(sim._curr_max_time) +
-            "," + str(len(sim.serviced_tasks)) + "," + str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "\n"
-        )
+    results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
+    if not path.exists(results_file_name):
+        f = open(results_file_name, 'w')
+        f.write('policy,lambda,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
+    else:
+        f = open(results_file_name, 'a')
+
+    for seed in [2, 6, 4.37, 52, 97]:
+        args.seed = seed
+
+        for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
+            print("================= LAMBDA: {:.2f} =================".format(lam))
+            args.lambd = lam
+            sim = simulate(args)
+            policy = args.policy.replace('_', ' ')
+            f.write(
+                str(policy) + "," + str(lam) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+                str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim._total_travel_distance) + "," +
+                str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
+                str(sim._max_travel_distance) + "\n"
+            )
     f.close()
 
 
@@ -123,7 +138,7 @@ if __name__ == "__main__":
         help='Length of Simulation Time Step')
     argparser.add_argument(
         '--max-time',
-        default=MAX_SIMULATION_TIME,
+        default=None,
         type=float,
         help='Maximum Length of Simulation')
     argparser.add_argument(

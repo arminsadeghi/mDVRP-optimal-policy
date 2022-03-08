@@ -2,7 +2,7 @@
 TSP policy that find the optimal multi robot TSP on the unserviced tasks
 '''
 from copy import deepcopy
-from policies.util import get_ditance_matrix, assign_tours_to_actors
+from policies.util import get_distance_matrix, assign_tours_to_actors
 from random import randint, shuffle, random
 from time import time
 
@@ -128,7 +128,7 @@ def rnd_insertion(tours, deleted_vertices):
         if n == 0:
             tours[rnd_tour].append(vertex)
             continue
-        
+
         rnd_loc = randint(1, n)
 
         if rnd_loc == n:
@@ -137,8 +137,7 @@ def rnd_insertion(tours, deleted_vertices):
             tours[rnd_tour].insert(rnd_loc, vertex)
     return tours
 
-                
-    
+
 def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, service_time):
     total_cost = 0
     for _i in range(len(tours)):
@@ -146,7 +145,7 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, current_time, max_solver_time=30, service_time=0):
+def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0):
     """tsp policy
 
     Args:
@@ -154,7 +153,7 @@ def policy(actors, tasks, current_time, max_solver_time=30, service_time=0):
         tasks (_type_): the tasks arrived
     """
 
-    distance_matrix, task_indices = get_ditance_matrix(actors, tasks)
+    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)
 
     best_tours = random_task_assignment(tours, len(task_indices))
@@ -167,7 +166,7 @@ def policy(actors, tasks, current_time, max_solver_time=30, service_time=0):
     while time() - s_time < max_solver_time:
         candidate_tours = deepcopy(tours)
 
-        deleted_vertices, candidate_tours = random_deletion(candidate_tours, p = 2)
+        deleted_vertices, candidate_tours = random_deletion(candidate_tours, p=2)
         if random() < 0.8:
             candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time)
         else:
