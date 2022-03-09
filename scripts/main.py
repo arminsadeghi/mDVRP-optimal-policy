@@ -6,6 +6,7 @@ import pygame
 
 from importlib import import_module
 from os import path, mkdir
+from time import time
 
 
 def simulate(args):
@@ -23,6 +24,8 @@ def simulate(args):
     # set the seed
     if args.seed is not None:
         seed(args.seed)
+    else:
+        seed(time())
 
     sim = Simulation(
         policy_name=args.policy,
@@ -63,11 +66,11 @@ def multiple_sims(args):
     results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
     if not path.exists(results_file_name):
         f = open(results_file_name, 'w')
-        f.write('policy,lambda,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
+        f.write('policy,lambda,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
     else:
         f = open(results_file_name, 'a')
 
-    for seed in [2, 6, 4.37, 52, 97]:
+    for seed in [2, 6, 4.37, 52, 97, 35, 81, 1932, 493, 89234657]:
         args.seed = seed
 
         for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
@@ -76,8 +79,9 @@ def multiple_sims(args):
             sim = simulate(args)
             policy = args.policy.replace('_', ' ')
             f.write(
-                str(policy) + "," + str(lam) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
-                str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim._total_travel_distance) + "," +
+                str(policy) + "," + str(lam) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+                str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
+                str(sim._total_travel_distance) + "," +
                 str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
                 str(sim._max_travel_distance) + "\n"
             )
@@ -150,7 +154,17 @@ if __name__ == "__main__":
         '--show-sim',
         action='store_true',
         help='Display the simulation window')
+    argparser.add_argument(
+        '--multipass',
+        action='store_true',
+        help='Run the simulation over multiple lambda and seeds')
 
     args = argparser.parse_args()
 
-    multiple_sims(args)
+    if args.multipass:
+        for name in ['tsp', 'mod_tsp', 'quad_wait_tsp', 'batch_tsp']:
+            args.policy = name
+            multiple_sims(args)
+
+    else:
+        simulate(args)

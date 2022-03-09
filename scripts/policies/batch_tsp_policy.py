@@ -3,8 +3,9 @@ TSP policy that find the optimal multi robot TSP on the unserviced tasks
 '''
 from copy import deepcopy
 from policies.util import get_distance_matrix, assign_tours_to_actors
-from random import randint, shuffle, random
+from random import randint, shuffle
 from time import time
+
 
 LARGE_NUMBER = 1000000000000000
 
@@ -27,31 +28,12 @@ def random_task_assignment(tours, num_tasks):
     return tours
 
 
-def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time):
-    """calculate the total wait time of the tasks given the tour
-
-    Args:
-        tour (_type_): the sequence of the tasks
-        distance_matrix (_type_): distance matrix
-        tasks (_type_): the list of the tasks
-        task_indices (_type_): the indices of the tasks in the original task list
-        current_time (_type_): the current simulation time
-
-    Returns:
-        _type_: returns the cost of the tour
-    """
-    cost_to_vertex = [0]
-
-    for _i in range(len(tour) - 1):
-        cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(
-            tour[_i], tour[_i + 1]
-        )] + service_time)
-
+def tour_cost(tour, distance_matrix):
     cost = 0
-    for _i in range(len(tour)):
-        wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
-        cost += wait_time ** 2
-
+    for _i in range(len(tour) - 1):
+        cost += distance_matrix[(
+            tour[_i], tour[_i + 1]
+        )]
     return cost
 
 
@@ -79,7 +61,7 @@ def random_deletion(tours, p=1):
     return deleted_vertices, candidate_tour
 
 
-def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time):
+def min_cost_insertion(tours, deleted_vertices, distance_matrix):
     min_cost = LARGE_NUMBER
 
     shuffle(deleted_vertices)
@@ -88,12 +70,18 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_ind
         best_index = len(tours[0])
         for _i in range(len(tours)):
             for _j in range(len(tours[_i]) - 1):
-                prev_cost = tour_cost(tours[_i], distance_matrix, tasks, task_indices, current_time, service_time)
-                candid_tour = deepcopy(tours[_i])
-                candid_tour.insert(_j, vertex)
-                candid_cost = tour_cost(candid_tour, distance_matrix, tasks, task_indices, current_time, service_time)
+                insertion_cost = distance_matrix[(
+                    tours[_i][_j], vertex
+                )]
 
-                insertion_cost = candid_cost - prev_cost
+                insertion_cost += distance_matrix[(
+                    tours[_i][_j + 1], vertex
+                )]
+
+                insertion_cost -= distance_matrix[(
+                    tours[_i][_j], tours[_i][_j + 1]
+                )]
+
                 if insertion_cost < min_cost:
                     best_tour = _i
                     best_index = _j
@@ -101,11 +89,9 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_ind
 
             # check the cost of appending
             _j = len(tours[_i]) - 1
-            prev_cost = tour_cost(tours[_i], distance_matrix, tasks, task_indices, current_time, service_time)
-            candid_tour = deepcopy(tours[_i])
-            candid_tour.append(vertex)
-            candid_cost = tour_cost(candid_tour, distance_matrix, tasks, task_indices, current_time, service_time)
-            insertion_cost = candid_cost - prev_cost
+            insertion_cost = distance_matrix[(
+                tours[_i][_j], vertex
+            )]
             if insertion_cost < min_cost:
                 best_tour = _i
                 best_index = _j
@@ -120,29 +106,10 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_ind
     return tours
 
 
-def rnd_insertion(tours, deleted_vertices):
-    shuffle(deleted_vertices)
-    for vertex in deleted_vertices:
-        rnd_tour = randint(0, len(tours) - 1)
-        n = len(tours[rnd_tour]) - 1
-
-        if n == 0:
-            tours[rnd_tour].append(vertex)
-            continue
-
-        rnd_loc = randint(1, n)
-
-        if rnd_loc == n:
-            tours[rnd_tour].append(vertex)
-        else:
-            tours[rnd_tour].insert(rnd_loc, vertex)
-    return tours
-
-
-def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, service_time):
+def total_tour_cost(tours, distance_matrix):
     total_cost = 0
     for _i in range(len(tours)):
-        total_cost += tour_cost(tours[_i], distance_matrix, tasks, task_indices, current_time, service_time)
+        total_cost += tour_cost(tours[_i], distance_matrix)
     return total_cost
 
 
@@ -154,35 +121,36 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0):
         tasks (_type_): the tasks arrived
     """
 
-    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
-    tours = initialize_tours(actors)
+    idle_actors = []
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors.append(actor)
+
+    if not len(idle_actors):
+        return True
+
+    distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
+    tours = initialize_tours(idle_actors)
 
     best_tours = random_task_assignment(tours, len(task_indices))
 
-    best_cost = total_tour_cost(best_tours, distance_matrix, tasks, task_indices, current_time, service_time)
+    best_cost = total_tour_cost(best_tours, distance_matrix)
     s_time = time()
     iterations_since_last_improvement = 0
     iter_count = 0
-    print("initial cost", best_cost)
     while time() - s_time < max_solver_time:
         candidate_tours = deepcopy(tours)
-
         deleted_vertices, candidate_tours = random_deletion(candidate_tours, p=2)
-        if random() < 0.8:
-            candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time)
-        else:
-            candidate_tours = rnd_insertion(candidate_tours, deleted_vertices)
-        candidate_tour_cost = total_tour_cost(candidate_tours, distance_matrix, tasks, task_indices, current_time, service_time)
-
+        candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix)
+        candidate_tour_cost = total_tour_cost(candidate_tours, distance_matrix)
         if candidate_tour_cost < best_cost:
             best_cost = candidate_tour_cost
             best_tours = deepcopy(candidate_tours)
             iterations_since_last_improvement = 0
-            print("improved cost", best_cost)
         else:
             iterations_since_last_improvement += 1
 
-        if iterations_since_last_improvement > 1000:
+        if iterations_since_last_improvement > 100:
             break
         iter_count += 1
     assign_tours_to_actors(actors, tasks, best_tours, task_indices)

@@ -16,4 +16,4 @@ def policy(actors, tasks, current_time=0, service_time=0):
         actor.path.append(
             Task(-1, [0, 0], -1)
         )
-    return actors
+    return False
