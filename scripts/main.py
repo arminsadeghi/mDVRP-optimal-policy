@@ -6,6 +6,7 @@ import pygame
 
 from importlib import import_module
 from os import path, mkdir
+from time import time
 
 
 def simulate(args):
@@ -23,6 +24,8 @@ def simulate(args):
     # set the seed
     if args.seed is not None:
         seed(args.seed)
+    else:
+        seed(time())
 
     sim = Simulation(
         policy_name=args.policy,

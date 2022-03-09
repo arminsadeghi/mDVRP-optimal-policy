@@ -1,4 +1,5 @@
 import imp
+from sqlite3 import DataError
 
 from matplotlib.pyplot import show
 from actor import Actor
@@ -7,8 +8,7 @@ from random import random, expovariate, seed
 from Task import Task
 import pygame
 from importlib import import_module
-
-seed(10)
+from math import sqrt
 
 
 class Simulation:
@@ -54,6 +54,8 @@ class Simulation:
         self._total_travel_distance = 0
         self._max_travel_distance = 0
 
+        self._policy_refresh_required = False
+
         # preload all the the tasks
         self._draw_all_tasks(max_time=max_time, max_tasks=max_tasks)
 
@@ -71,6 +73,23 @@ class Simulation:
                 # future tasks -- can stop looking
                 break
         self._curr_max_time = max_time
+
+    def calculate_sd(self):
+        """
+        Calculate the standard deviation in wait time across
+        all completed tasks
+        """
+        mean = self._avg_served_time / len(self.serviced_tasks)
+        variance = 0
+        adjustment = 0
+        for task_index in self.serviced_tasks:
+            try:
+                variance += (self.task_list[task_index].wait_time() - mean) ** 2
+            except DataError as e:
+                pass  # ignore those tasks that (for whatever reason) haven't completed
+                adjustment += 1
+
+        return sqrt(variance / (len(self.serviced_tasks) - adjustment))
 
     def _draw_all_tasks(self, max_time=None, max_tasks=MAX_SERVICED_TASKS):
         """
@@ -255,17 +274,21 @@ class Simulation:
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
         """
-        if self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
+        if self.screen == None and self._show_sim == True:
+            print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
+            return -1
+
+        if self._policy_refresh_required or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time):
             while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
                 if self.next_task > len(self.task_list) - 1:
                     break
                 print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
                 self.next_task += 1
 
-            self.actor_list = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
-                                           current_time=self.sim_time, service_time=self.service_time)
+            self._policy_refresh_required = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
+                                                         current_time=self.sim_time, service_time=self.service_time)
 
-        if self._show_sim == True:
+        if self._show_sim:
             #  draw the limits of the environment
             pygame.draw.rect(self.screen,
                              (255,  255,  255),
@@ -274,18 +297,15 @@ class Simulation:
         # one clock tick for the simulation time
         self.sim_time += tick_time
 
-        # if self.sim_time > MAX_SIMULATION_TIME:
-        #     return -1
-
-        if len(self.serviced_tasks) >= max_tasks:
-            return -1
+        if max_simulation_time is not None:
+            if self.sim_time > max_simulation_time:
+                return -1
+        else:
+            if len(self.serviced_tasks) >= max_tasks:
+                return -1
 
         if self._show_sim:
             self._plot_tasks()
-
-        if self.screen == None and self._show_sim == True:
-            print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
-            return
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
@@ -294,7 +314,7 @@ class Simulation:
             if self.actor_list[actor_index].travel_dist > self._max_travel_distance:
                 self._max_travel_distance = self.actor_list[actor_index].travel_dist
 
-            if self._show_sim == True:
+            if self._show_sim:
                 self._draw_actor_path(actor_index)
                 self._show_actor_pos(actor_index)
 
