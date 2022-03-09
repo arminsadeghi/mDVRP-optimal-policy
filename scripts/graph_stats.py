@@ -37,7 +37,7 @@ def parse_state_data(files, names):
         df = pd.read_csv(f)
         df_list.append(df)
 
-    for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
+    for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist', 'wait-sd']:
         colour_index = 0
         fig, ax = plt.subplots()
         fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
