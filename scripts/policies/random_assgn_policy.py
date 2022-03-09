@@ -12,4 +12,4 @@ def policy(actors, tasks, current_time=0, service_time=0):
         rnd_index = randint(0, len(actors) - 1)
         actors[rnd_index].path.append(_task)
 
-    return actors
+    return False

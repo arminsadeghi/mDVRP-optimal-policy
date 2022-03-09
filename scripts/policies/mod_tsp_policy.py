@@ -184,4 +184,5 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0):
         if iterations_since_last_improvement > 1000:
             break
         iter_count += 1
-    return assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    return False

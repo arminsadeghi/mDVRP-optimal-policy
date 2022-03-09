@@ -77,3 +77,6 @@ class Actor:
 
         self._move(sim_time)
         return finished_task
+
+    def is_busy(self):
+        return self.servicing or len(self.path) > 1
