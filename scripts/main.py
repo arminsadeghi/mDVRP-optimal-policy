@@ -162,8 +162,7 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     if args.multipass:
-        # for name in ['tsp', 'mod_tsp', 'quad_wait_tsp', 'batch_tsp']:
-        for name in ['batch_tsp']:
+        for name in ['tsp', 'mod_tsp', 'quad_wait_tsp', 'batch_tsp']:
             args.policy = name
             multiple_sims(args)
 
