@@ -7,6 +7,7 @@ import pygame
 from importlib import import_module
 from os import path, mkdir
 from time import time
+from pickle import load, dump
 
 
 def simulate(args):
@@ -24,6 +25,7 @@ def simulate(args):
     # set the seed
     if args.seed is not None:
         seed(args.seed)
+        print("Setting seed to: ", args.seed)
     else:
         seed(time())
 
@@ -36,6 +38,21 @@ def simulate(args):
         max_tasks=args.max_tasks,
         max_time=args.max_time
     )
+
+    if args.seed is not None:
+        if not path.isdir(TASKS_DIR):
+            mkdir(TASKS_DIR)
+
+        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + '_' + str(args.lambd) + '_' + str(args.seed) + '.pkl')
+        try:
+            with open(pickle_file, 'rb') as fp:
+                task_list = load(fp)
+                sim.reset(task_list)
+        except Exception as e:
+            print(e)
+            # not loading, save it instead
+            with open(pickle_file, 'wb') as fp:
+                dump(sim.task_list, fp)
 
     while True:
         if args.show_sim:
@@ -60,7 +77,7 @@ def simulate(args):
 
 def multiple_sims(args):
 
-    if not path.isdir('results'):
+    if not path.isdir(RESULTS_DIR):
         mkdir(RESULTS_DIR)
 
     results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
@@ -73,7 +90,8 @@ def multiple_sims(args):
     for seed in [2, 6, 4.37, 52, 97, 35, 81, 1932, 493, 89234657]:
         args.seed = seed
 
-        for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]:
+        new_task_list = True
+        for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
             print("================= LAMBDA: {:.2f} =================".format(lam))
             args.lambd = lam
             sim = simulate(args)
@@ -126,6 +144,10 @@ if __name__ == "__main__":
         default=DEFAULT_POLICY_NAME,
         help='Policy to use')
     argparser.add_argument(
+        '--load-tasks',
+        action='store_true',
+        help='Load the most recent list of tasks')
+    argparser.add_argument(
         '--service-time',
         default=SERVICE_TIME,
         type=float,
@@ -162,8 +184,9 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     if args.multipass:
-        for name in ['tsp', 'mod_tsp', 'quad_wait_tsp', 'batch_tsp']:
-            args.policy = name
+        for policy in ['batch_tsp', 'tsp', 'mod_tsp', 'quad_wait_tsp']:
+            # for policy in ['batch_tsp']:
+            args.policy = policy
             multiple_sims(args)
 
     else:

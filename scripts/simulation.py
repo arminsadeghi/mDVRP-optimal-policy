@@ -1,10 +1,11 @@
+from copy import deepcopy
 import imp
 from sqlite3 import DataError
 
 from matplotlib.pyplot import show
 from actor import Actor
 from config import *
-from random import random, expovariate, seed
+from random import random, expovariate
 from Task import Task
 import pygame
 from importlib import import_module
@@ -16,38 +17,42 @@ class Simulation:
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
                  max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True):
         self.num_actors = num_actors
-        self.actor_list = [
-            Actor(
-                id=i+1,
-                pos=[0, 0],
-                service_time=service_time,
-                speed=speed,
-                screen=screen
-            ) for i in range(num_actors)]
-
+        self.actor_speed = speed
         self.pois_lambda = pois_lambda
-        self.task_list = []
-        self.serviced_tasks = []
-        self.sim_time = 0
-        self.time_last_arrival = 0
-        self.next_time = expovariate(self.pois_lambda)
         self.screen = screen
         self._show_sim = show_sim
         if show_sim == True:
             self.sim_time_text = pygame.font.SysFont('dejavuserif', 15)
             self.elapsed_time_text = pygame.font.SysFont('dejavuserif', 10)
 
-        self.sim_start_time = 0
         self.service_time = service_time
         self._margin = margin
         self._screen_width = screen_width
         self._env_size = screen_width - self._margin
+        self.max_time = max_time
+        self.max_tasks = max_tasks
 
         # load the policy
-        self.policy_name = "{}_policy".format(policy_name)
-        policy_mod = import_module('.'+self.policy_name, package='policies')
-        self._policy = policy_mod.policy
+        self.load_policy(policy_name=policy_name)
 
+        # preload all the the tasks
+        self.reset()
+
+    def reset(self, task_list=None):
+        self.actor_list = [
+            Actor(
+                id=i+1,
+                pos=[0, 0],
+                service_time=self.service_time,
+                speed=self.actor_speed,
+                screen=self.screen
+            ) for i in range(self.num_actors)]
+
+        self.serviced_tasks = []
+        self.sim_time = 0
+        self.next_time = expovariate(self.pois_lambda)
+        self.time_last_arrival = 0
+        self.sim_start_time = 0
         self._max_served_time = -1
         self._curr_max_time = -1
         self._avg_served_time = 0
@@ -56,8 +61,16 @@ class Simulation:
 
         self._policy_refresh_required = False
 
-        # preload all the the tasks
-        self._draw_all_tasks(max_time=max_time, max_tasks=max_tasks)
+        if task_list is None:
+            self._draw_all_tasks(max_time=self.max_time, max_tasks=self.max_tasks)
+        else:
+            self.task_list = task_list
+
+    def load_policy(self, policy_name):
+        # load the policy
+        self.policy_name = "{}_policy".format(policy_name)
+        policy_mod = import_module('.'+self.policy_name, package='policies')
+        self._policy = policy_mod.policy
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
@@ -98,6 +111,7 @@ class Simulation:
         are inserting one now.
         """
 
+        self.task_list = []
         sim_time = self.next_time
         while True:
             next_time = expovariate(self.pois_lambda)
@@ -226,8 +240,8 @@ class Simulation:
             current_max_service_time_text = self.sim_time_text.render(
                 "curr max time: " + str(self._curr_max_time), False, (255, 255, 255))
             self.screen.blit(current_max_service_time_text, (self._screen_width/2.0, 40))
-        except:
-            print("Error in showing simulation info")
+        except Exception as e:
+            print("Error in showing simulation info", e)
             pass
 
     def _show_actor_pos(self, actor_index):
