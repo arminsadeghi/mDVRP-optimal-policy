@@ -17,3 +17,6 @@ SCREEN_HEIGHT = 1000
 SCREEN_MARGIN = 150
 
 RESULTS_DIR = 'results'
+TASKS_DIR = 'tasks'
+
+TASK_LIST_FILE_PREFIX = "dvrp_tasks"
