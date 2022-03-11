@@ -13,7 +13,7 @@ from math import sqrt
 
 
 class Simulation:
-    def __init__(self, policy_name, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
+    def __init__(self, policy_name, generator_name, generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
                  max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True):
         self.num_actors = num_actors
@@ -31,6 +31,9 @@ class Simulation:
         self._env_size = screen_width - self._margin
         self.max_time = max_time
         self.max_tasks = max_tasks
+
+        # load the draw method
+        self.load_generator(generator_name=generator_name, generator_args=generator_args)
 
         # load the policy
         self.load_policy(policy_name=policy_name)
@@ -61,6 +64,9 @@ class Simulation:
 
         self._policy_refresh_required = False
 
+        # reset the random number generator
+        self.generator.reset()
+
         if task_list is None:
             self._draw_all_tasks(max_time=self.max_time, max_tasks=self.max_tasks)
         else:
@@ -71,6 +77,14 @@ class Simulation:
         self.policy_name = "{}_policy".format(policy_name)
         policy_mod = import_module('.'+self.policy_name, package='policies')
         self._policy = policy_mod.policy
+
+    def load_generator(self, generator_name, generator_args):
+        # load the generator
+        self.generator_name = generator_name
+        self.generator_args = generator_args
+        gen_mod = import_module('.'+self.generator_name, package='generators')
+        generator_fn = gen_mod.get_generator_fn()
+        self.generator = generator_fn(**self.generator_args)
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
@@ -117,7 +131,7 @@ class Simulation:
             next_time = expovariate(self.pois_lambda)
             new_task = Task(
                 id=len(self.task_list),
-                location=[2*random() - 1, 2*random() - 1],
+                location=self.generator.draw(),
                 time=sim_time,
             )
             self.task_list.append(new_task)
