@@ -1,12 +1,14 @@
-from math import sqrt 
+from math import sqrt
 from Task import Task
+
 
 def euc_distance(task1, task2):
     return sqrt(
         (task1[0] - task2[0])**2 + (task1[1] - task2[1])**2
     )
 
-def get_ditance_matrix(actors, tasks):
+
+def get_distance_matrix(actors, tasks):
     task_locations = []
     task_indices = []
     for actor in actors:
@@ -27,14 +29,14 @@ def get_ditance_matrix(actors, tasks):
             dist = euc_distance(task_locations[_i], task_locations[_j])
             distance_matrix[(_i, _j)] = dist
             distance_matrix[(_j, _i)] = dist
-    
+
     return distance_matrix, task_indices
 
 
 def assign_tours_to_actors(actors, tasks, tours, task_indices):
     for actor in actors:
         actor.path = []
-    
+
     for actor_index in range(len(actors)):
         for _i in range(1, len(tours[actor_index])):
             index = tours[actor_index][_i]

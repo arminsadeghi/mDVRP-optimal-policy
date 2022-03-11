@@ -121,8 +121,16 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0):
         tasks (_type_): the tasks arrived
     """
 
-    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
-    tours = initialize_tours(actors)
+    idle_actors = []
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors.append(actor)
+
+    if not len(idle_actors):
+        return True
+
+    distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
+    tours = initialize_tours(idle_actors)
 
     best_tours = random_task_assignment(tours, len(task_indices))
 
