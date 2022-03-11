@@ -1,4 +1,5 @@
 import argparse
+from importlib.metadata import distribution
 from random import seed
 from simulation import Simulation
 from config import *
@@ -31,6 +32,17 @@ def simulate(args):
 
     sim = Simulation(
         policy_name=args.policy,
+        generator_name=args.generator,
+        generator_args={
+            'min': -1,
+            'max': 1,
+            'distributions': [
+                [0.5, 0.2],
+                [-0.5, 0.2]
+            ],
+            'seed': args.seed,
+            'dim': 2,
+        },
         num_actors=args.actors,
         pois_lambda=args.lambd,
         screen=screen,
@@ -43,7 +55,7 @@ def simulate(args):
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + '_' + str(args.lambd) + '_' + str(args.seed) + '.pkl')
+        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + '_' + str(args.lambd) + '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
         try:
             with open(pickle_file, 'rb') as fp:
                 task_list = load(fp)
@@ -87,11 +99,11 @@ def multiple_sims(args):
     else:
         f = open(results_file_name, 'a')
 
-    for seed in [2, 6, 4.37, 52, 97, 35, 81, 1932, 493, 89234657]:
+    for seed in [2, 6, 42, 52, 97, 35, 81, 1932, 493, 89234657]:
         args.seed = seed
 
         new_task_list = True
-        for lam in [0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
+        for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
             print("================= LAMBDA: {:.2f} =================".format(lam))
             args.lambd = lam
             sim = simulate(args)
@@ -127,7 +139,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-s', '--seed',
         default=None,
-        type=float,
+        type=int,
         help='Random Seed')
     argparser.add_argument(
         '-l', '--lambd',
@@ -143,6 +155,10 @@ if __name__ == "__main__":
         '-p', '--policy',
         default=DEFAULT_POLICY_NAME,
         help='Policy to use')
+    argparser.add_argument(
+        '-g', '--generator',
+        default=DEFAULT_GENERATOR_NAME,
+        help='Random Generator to use')
     argparser.add_argument(
         '--load-tasks',
         action='store_true',
@@ -185,7 +201,6 @@ if __name__ == "__main__":
 
     if args.multipass:
         for policy in ['batch_tsp', 'tsp', 'mod_tsp', 'quad_wait_tsp']:
-            # for policy in ['batch_tsp']:
             args.policy = policy
             multiple_sims(args)
 
