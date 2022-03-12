@@ -26,6 +26,10 @@ class BimodelGaussGen:
             self.dim = kwargs['dim']
         except KeyError:
             self.dim = 2
+        try:
+            self.mix = kwargs['mix']
+        except KeyError:
+            self.mix = 0.5
 
         self.reset()
 
@@ -37,7 +41,7 @@ class BimodelGaussGen:
         mix = self.gen.uniform()
         for i in range(self.dim):
             while True:
-                if mix < 0.5:
+                if mix < self.mix:
                     n = self.gen.normal(loc=self.dists[0][0], scale=self.dists[0][1])
                 else:
                     n = self.gen.normal(loc=self.dists[1][0], scale=self.dists[1][1])
