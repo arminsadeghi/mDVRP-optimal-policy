@@ -35,22 +35,26 @@ class BimodelGaussGen:
 
     def reset(self):
         self.gen = np.random.default_rng(self.seed)
+        self.zone_one_count = 0
+        self.gen_count = 0
 
     def draw(self):
         v = []
-        mix = self.gen.uniform()
+
         for i in range(self.dim):
             while True:
-                if mix < self.mix:
-                    n = self.gen.normal(loc=self.dists[0][0], scale=self.dists[0][1])
+                if self.gen_count > 3 and self.zone_one_count == 0:
+                    n = self.max - 0.05
                 else:
                     n = self.gen.normal(loc=self.dists[1][0], scale=self.dists[1][1])
                 if n >= self.min and n <= self.max:
                     break
             v.append(n)
 
-            # v.append(self.gen.normal(loc=self.dists[0][0], scale=self.dists[0][1]) * mix
-            #          + self.gen.normal(loc=self.dists[1][0], scale=self.dists[1][1]) * (1-mix))
+        if self.gen_count > 3 and self.zone_one_count == 0:
+            self.zone_one_count += 1
+        self.gen_count += 1
+
         return v
 
     def test(self):

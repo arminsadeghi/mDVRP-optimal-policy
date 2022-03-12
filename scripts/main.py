@@ -9,6 +9,7 @@ from importlib import import_module
 from os import path, mkdir
 from time import time
 from pickle import load, dump
+from time import sleep
 
 
 def simulate(args):
@@ -23,6 +24,9 @@ def simulate(args):
     else:
         screen = None
 
+    # for i in range(15):
+    #     sleep(1)
+
     # set the seed
     if args.seed is not None:
         seed(args.seed)
@@ -30,19 +34,13 @@ def simulate(args):
     else:
         seed(time())
 
+    generator_args = GENERATOR_ARGS
+    generator_args['seed'] = args.seed
+
     sim = Simulation(
         policy_name=args.policy,
         generator_name=args.generator,
-        generator_args={
-            'min': -1,
-            'max': 1,
-            'distributions': [
-                [0.5, 0.2],
-                [-0.5, 0.2]
-            ],
-            'seed': args.seed,
-            'dim': 2,
-        },
+        generator_args=generator_args,
         num_actors=args.actors,
         pois_lambda=args.lambd,
         screen=screen,
