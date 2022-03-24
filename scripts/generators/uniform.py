@@ -1,36 +1,24 @@
 import numpy as np
+import random
+from generators.generator import Generator
 
 
-class UniformGen:
+class UniformGen(Generator):
 
     def __init__(self, **kwargs):
-        try:
-            self.min = kwargs['min']
-        except KeyError:
-            self.min = 0
-        try:
-            self.max = kwargs['max']
-        except KeyError:
-            self.max = 1
-        try:
-            self.seed = kwargs['seed']
-        except KeyError:
-            self.seed = None
-        try:
-            self.dim = kwargs['dim']
-        except KeyError:
-            self.dim = 2
-
-        self.reset()
-
-    def reset(self):
-        self.gen = np.random.default_rng(seed=self.seed)
+        super().__init__(**kwargs)
 
     def draw(self):
         v = []
         for i in range(self.dim):
             v.append(self.gen.uniform(self.min, self.max))
         return v
+
+    def poisson(self, lam):
+        return self.gen.poisson(lam=lam)
+
+    def normal(self, loc, scale):
+        return self.gen.normal(loc=loc, scale=scale)
 
 
 def get_generator_fn():

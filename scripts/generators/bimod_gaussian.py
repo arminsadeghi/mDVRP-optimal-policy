@@ -1,40 +1,26 @@
 
 
 import numpy as np
+import random
+from Task import Task
+from generators.generator import Generator
 
 
-class BimodelGaussGen:
+class BimodelGaussGen(Generator):
 
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         self.dists = kwargs['distributions']
         if len(self.dists) != 2:
             raise ValueError("Bad mix of variables -- must be two gaussians!")
 
-        try:
-            self.min = kwargs['min']
-        except KeyError:
-            self.min = 0
-        try:
-            self.max = kwargs['max']
-        except KeyError:
-            self.max = 1
-        try:
-            self.seed = kwargs['seed']
-        except KeyError:
-            self.seed = None
-        try:
-            self.dim = kwargs['dim']
-        except KeyError:
-            self.dim = 2
         try:
             self.mix = kwargs['mix']
         except KeyError:
             self.mix = 0.5
 
         self.reset()
-
-    def reset(self):
-        self.gen = np.random.default_rng(self.seed)
 
     def draw(self):
         v = []
@@ -48,9 +34,6 @@ class BimodelGaussGen:
                 if n >= self.min and n <= self.max:
                     break
             v.append(n)
-
-            # v.append(self.gen.normal(loc=self.dists[0][0], scale=self.dists[0][1]) * mix
-            #          + self.gen.normal(loc=self.dists[1][0], scale=self.dists[1][1]) * (1-mix))
         return v
 
     def test(self):
