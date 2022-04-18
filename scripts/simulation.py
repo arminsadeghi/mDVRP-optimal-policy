@@ -6,7 +6,7 @@ from matplotlib.pyplot import show
 from actor import Actor
 from config import *
 from random import random, expovariate, seed
-from Task import Task
+from Task import Task, ServiceState
 import pygame
 from importlib import import_module
 from math import sqrt
@@ -96,7 +96,7 @@ class Simulation:
         """
         max_time = -1
         for task in self.task_list:
-            if task.serviced == True:
+            if task.service_state is not ServiceState.SERVICED:
                 continue
             time = self.sim_time - task.time
             if time > max_time:
@@ -154,7 +154,7 @@ class Simulation:
         """
         for task in self.task_list[::-1]:
 
-            if task.serviced:
+            if task.service_state is ServiceState.SERVICED:
                 continue
 
             task_loc_screen = self._get_location_on_screen(task.location)
@@ -193,27 +193,22 @@ class Simulation:
                 self._get_location_on_screen(path[_i].location),
                 self._get_location_on_screen(path[_i+1].location))
 
-        if self.actor_list[actor_index].next_goal != None:
-            if path != []:
-                pygame.draw.line(
-                    self.screen, (255, 255, 255),
-                    self._get_location_on_screen(self.actor_list[actor_index].next_goal.location),
-                    self._get_location_on_screen(path[0].location))
+        if len(self.actor_list[actor_index].path):
             pygame.draw.line(
                 self.screen, (255, 255, 255),
                 self._get_location_on_screen(self.actor_list[actor_index].pos),
-                self._get_location_on_screen(self.actor_list[actor_index].next_goal.location))
+                self._get_location_on_screen(self.actor_list[actor_index].path[0].location))
 
-        if self.actor_list[actor_index].next_goal != None:
-            task_loc_screen = self._get_location_on_screen(self.actor_list[actor_index].next_goal.location)
-            self._draw_rect(
-                location=task_loc_screen,
-                color=(0, 255, 0),
-                size=10
-            )
-            elapsed_time_text = self.elapsed_time_text.render(
-                str(round(self.sim_time - self.actor_list[actor_index].next_goal.time, 2)), False, (255, 255, 255))
-            self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
+            if self.actor_list[actor_index].path[0].id != -1:
+                task_loc_screen = self._get_location_on_screen(self.actor_list[actor_index].path[0].location)
+                self._draw_rect(
+                    location=task_loc_screen,
+                    color=(0, 255, 0),
+                    size=10
+                )
+                elapsed_time_text = self.elapsed_time_text.render(
+                    str(round(self.sim_time - self.actor_list[actor_index].path[0].time, 2)), False, (255, 255, 255))
+                self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
 
     def _show_sim_info(self):
         try:
@@ -274,8 +269,11 @@ class Simulation:
         if rval.id == -1:
             return
 
+        if self.task_list[rval.id].service_state == ServiceState.SERVICED:
+            raise ValueError("Double trouble -- Task already serviced!")
+
         #  set the task to be serviced
-        self.task_list[rval.id].serviced = True
+        self.task_list[rval.id].service_state = ServiceState.SERVICED
         self.task_list[rval.id].time_serviced = self.sim_time
         print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
         self.serviced_tasks.append(rval.id)
