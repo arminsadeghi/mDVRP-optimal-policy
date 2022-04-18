@@ -97,35 +97,46 @@ def multiple_sims(args):
     if not path.isdir(RESULTS_DIR):
         mkdir(RESULTS_DIR)
 
-    results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
-    if not path.exists(results_file_name):
-        f = open(results_file_name, 'w')
-        f.write('policy,lambda,cost-exponent,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
-    else:
-        f = open(results_file_name, 'a')
+    # Note that neither batch_tsp, nor tsp use the exponent value for anything -- they
+    # just need to run once... giving them unique negative values in case we want to graph
+    # them
+    # policies = ['batch_tsp', 'tsp', 'quad_wait_tsp']
+    policies = ['batch_tsp', 'tsp', 'quad_wait_tsp']
+    exponents = [[-2], [-1], [1, 1.5, 2, 2.5, 3, 4, 5, 10]]
 
-    for seed in [2, 6, 42, 52, 97, 35, 81, 1932, 493, 89234657]:
-        args.seed = seed
+    for policy, exps in zip(policies, exponents):
+        args.policy = policy
 
-        # for e in [1, 1.5, 2, 3, 4, 5, 10]:
-        for e in [25, 50]:
+        results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
+        if not path.exists(results_file_name):
+            f = open(results_file_name, 'w')
+            f.write('policy,lambda,cost-exponent,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
+        else:
+            f = open(results_file_name, 'a')
 
-            args.cost_exponent = e
+        # for seed in [2, 6, 42, 52, 97, 35, 81, 1932, 493, 89234657]:
+        for seed in [2, 6, 42, 52, 97]:
+            args.seed = seed
 
-            for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
-                # for lam in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:  # []:
-                print("================= LAMBDA: {:.2f} =================".format(lam))
-                args.lambd = lam
-                sim = simulate(args)
-                policy = args.policy.replace('_', ' ')
-                f.write(
-                    str(policy) + "," + str(lam) + "," + str(e) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
-                    str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
-                    str(sim._total_travel_distance) + "," +
-                    str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
-                    str(sim._max_travel_distance) + "\n"
-                )
-    f.close()
+            for e in exps:
+
+                args.cost_exponent = e
+
+                # for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
+                for lam in [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98]:  # []:
+                    # for lam in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:  # []:
+                    print("================= LAMBDA: {:.2f} =================".format(lam))
+                    args.lambd = lam
+                    sim = simulate(args)
+                    policy = args.policy.replace('_', ' ')
+                    f.write(
+                        str(policy) + "," + str(lam) + "," + str(e) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+                        str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
+                        str(sim._total_travel_distance) + "," +
+                        str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
+                        str(sim._max_travel_distance) + "\n"
+                    )
+        f.close()
 
 
 if __name__ == "__main__":
@@ -215,9 +226,7 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     if args.multipass:
-        for policy in ['batch_tsp', 'tsp', 'mod_tsp', 'quad_wait_tsp']:
-            args.policy = policy
-            multiple_sims(args)
+        multiple_sims(args)
 
     else:
         simulate(args)
