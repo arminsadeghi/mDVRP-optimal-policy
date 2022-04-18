@@ -62,14 +62,14 @@ def random_deletion(tours, p=1):
 
 
 def min_cost_insertion(tours, deleted_vertices, distance_matrix):
-    min_cost = LARGE_NUMBER
 
     shuffle(deleted_vertices)
     for vertex in deleted_vertices:
         best_tour = 0
         best_index = len(tours[0])
+        min_cost = LARGE_NUMBER
         for _i in range(len(tours)):
-            for _j in range(len(tours[_i]) - 1):
+            for _j in range(1, len(tours[_i]) - 1):
                 insertion_cost = distance_matrix[(
                     tours[_i][_j], vertex
                 )]
@@ -142,7 +142,7 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
         else:
             iterations_since_last_improvement += 1
 
-        if iterations_since_last_improvement > 100:
+        if iterations_since_last_improvement > 1000:
             break
         iter_count += 1
     assign_tours_to_actors(actors, tasks, best_tours, task_indices)
