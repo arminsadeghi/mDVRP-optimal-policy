@@ -134,8 +134,9 @@ def multiple_sims(args):
                         str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
                         str(sim._total_travel_distance) + "," +
                         str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
-                        str(sim._max_travel_distance) + "\n"
+                        str(sim._max_travel_distance) + "," + str(sim._max_queue_length) + "\n"
                     )
+                    f.flush()
         f.close()
 
 

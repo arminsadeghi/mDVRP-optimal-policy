@@ -61,6 +61,7 @@ class Simulation:
         self._avg_served_time = 0
         self._total_travel_distance = 0
         self._max_travel_distance = 0
+        self._max_queue_length = 0
 
         self._policy_refresh_required = False
 
@@ -330,6 +331,10 @@ class Simulation:
             if self._show_sim:
                 self._draw_actor_path(actor_index)
                 self._show_actor_pos(actor_index)
+
+        for actor in self.actor_list:
+            if len(actor.path) > self._max_queue_length:
+                self._max_queue_length = len(actor.path)
 
         if self._show_sim:
             self._show_sim_info()
