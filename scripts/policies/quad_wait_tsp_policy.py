@@ -5,8 +5,7 @@ from copy import deepcopy
 from policies.util import get_distance_matrix, assign_tours_to_actors
 from random import randint, shuffle, random
 from time import time
-
-LARGE_NUMBER = 1000000000000000
+from numpy import inf
 
 
 def initialize_tours(actors):
@@ -84,7 +83,7 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_ind
     for vertex in deleted_vertices:
         best_tour = None
         best_index = None
-        min_cost = LARGE_NUMBER
+        min_cost = inf
         for key, tour in tours.items():
             prev_cost = tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
             candid_tour = deepcopy(tour)

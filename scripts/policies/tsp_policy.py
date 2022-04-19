@@ -5,9 +5,7 @@ from copy import deepcopy
 from policies.util import get_distance_matrix, assign_tours_to_actors
 from random import randint, shuffle
 from time import time
-
-
-LARGE_NUMBER = 1000000000000000
+from numpy import inf
 
 
 def initialize_tours(actors):
@@ -67,7 +65,7 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix):
     for vertex in deleted_vertices:
         best_tour = 0
         best_index = len(tours[0])
-        min_cost = LARGE_NUMBER
+        min_cost = inf
         for _i in range(len(tours)):
             for _j in range(1, len(tours[_i]) - 1):
                 insertion_cost = distance_matrix[(
