@@ -52,10 +52,8 @@ def random_deletion(tours, p=1):
         if len(tours[rnd_actor]) < 2:
             continue
 
-        rnd_index = randint(1, len(tours[rnd_actor]) - 1)
-        if tours[rnd_actor][rnd_index] not in deleted_vertices:
-            deleted_vertices.append(tours[rnd_actor][rnd_index])
-            candidate_tour[rnd_actor].remove(tours[rnd_actor][rnd_index])
+        rnd_index = randint(1, len(candidate_tour[rnd_actor]) - 1)
+        deleted_vertices.append(candidate_tour[rnd_actor].pop(rnd_index))
     return deleted_vertices, candidate_tour
 
 

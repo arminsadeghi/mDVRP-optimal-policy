@@ -39,17 +39,18 @@ def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_
     Returns:
         _type_: returns the cost of the tour
     """
+
     cost_to_vertex = [0]
-
     for _i in range(len(tour) - 1):
-        cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(
-            tour[_i], tour[_i + 1]
-        )] + service_time)
+        cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(tour[_i], tour[_i + 1])] + service_time)
 
-    cost = 0
-    for _i in range(len(tour)):
-        wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
-        cost += wait_time ** cost_exponent
+    if cost_exponent:
+        cost = 0
+        for _i in range(len(tour)):
+            wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
+            cost += wait_time ** cost_exponent
+    else:
+        cost = cost_to_vertex[-1]
 
     return cost
 
@@ -71,10 +72,8 @@ def random_deletion(tours, p=1):
         if len(tours[rnd_actor]) < 2:
             continue
 
-        rnd_index = randint(1, len(tours[rnd_actor]) - 1)
-        if tours[rnd_actor][rnd_index] not in deleted_vertices:
-            deleted_vertices.append(tours[rnd_actor][rnd_index])
-            candidate_tour[rnd_actor].remove(tours[rnd_actor][rnd_index])
+        rnd_index = randint(1, len(candidate_tour[rnd_actor]) - 1)
+        deleted_vertices.append(candidate_tour[rnd_actor].pop(rnd_index))
     return deleted_vertices, candidate_tour
 
 
@@ -147,6 +146,8 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
     iterations_since_last_improvement = 0
     iter_count = 0
     print("initial cost", best_cost)
+    iteration_limit = False
+
     while time() - s_time < max_solver_time:
         candidate_tours = deepcopy(tours)
 
@@ -167,7 +168,14 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
             iterations_since_last_improvement += 1
 
         if iterations_since_last_improvement > 1000:
+            # print("Hit Iteration Limit")
+            iteration_limit = True
             break
+
         iter_count += 1
+
+    if not iteration_limit:
+        print("WARNING: Time expired while searching")
+
     assign_tours_to_actors(actors, tasks, best_tours, task_indices)
     return False
