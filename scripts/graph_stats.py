@@ -8,6 +8,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sb
 import numpy as np
+from distinctipy import distinctipy
+
 
 mpl.use('pdf')
 
@@ -54,7 +56,10 @@ def parse_state_data(files):
 
     df = pd.concat(df_list, ignore_index=True, sort=False)
 
+    # plot vs cost exponent
     # for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
+    n = len(set(df['cost-exponent']))
+    colour_list = distinctipy.get_colors(n)  # colours.values(n)
     for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
         for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
             colour_index = 0
@@ -63,9 +68,6 @@ def parse_state_data(files):
 
             # for df in df_list:
             df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]
-            # df_slice = df_slice[(df_slice['cost-exponent'] >= -1) * (df_slice['cost-exponent'] <= 10)]
-            n = len(set(df_slice['cost-exponent']))
-            colour_list = colours.values(n)
             sb.lineplot(x='lambda', y=col, hue='cost-exponent', data=df_slice, palette=colour_list, linewidth=2.5)
 
             ax.set_xlabel("Lambda")
@@ -75,18 +77,16 @@ def parse_state_data(files):
             fig.set_size_inches(width, height)
             fig.savefig('plot_lamda_{}_{}.pdf'.format(col, label))
 
+    # plot vs Lambda
     for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
+        n = len(set(df[(df['lambda'] >= l) * (df['lambda'] <= h)]['lambda']))
+        colour_list = distinctipy.get_colors(n)  # colours.values(n)
         for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
             colour_index = 0
             fig, ax = plt.subplots()
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
 
-            # sb.lineplot(x='lambda', y=col, hue='cost-exponent', data=df_slice, palette=colour_list, linewidth=2.5)
-
             df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]
-            # df_slice = df_slice[(df_slice['cost-exponent'] >= -1) * (df_slice['cost-exponent'] <= 10)]
-            n = len(set(df_slice['lambda']))
-            colour_list = colours.values(n)
             sb.lineplot(x='cost-exponent', y=col, hue='lambda', data=df_slice, palette=colour_list, linewidth=2.5)
 
             ax.set_xlabel("Cost Exponent")
