@@ -101,16 +101,16 @@ def multiple_sims(args):
     # just need to run once... giving them unique negative values in case we want to graph
     # them
     # policies = ['batch_tsp', 'tsp', 'quad_wait_tsp']
-    policies = ['batch_tsp', 'tsp', 'quad_wait_tsp']
-    exponents = [[-2], [-1], [1, 1.5, 2, 2.5, 3, 4, 5, 10]]
+    if len(args.prefix) != 0 and args.prefix[-1] != '_':
+        args.prefix = args.prefix + '_'
 
     for policy, exps in zip(policies, exponents):
         args.policy = policy
 
-        results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
+        results_file_name = path.join(RESULTS_DIR, args.prefix + args.policy + '_' + str(args.cost_exponent) + '_' + str(args.service_time) + ".csv")
         if not path.exists(results_file_name):
             f = open(results_file_name, 'w')
-            f.write('policy,lambda,cost-exponent,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
+            f.write('policy,lambda,cost-exponent,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
         else:
             f = open(results_file_name, 'a')
 
@@ -137,12 +137,31 @@ def multiple_sims(args):
                         str(sim._max_travel_distance) + "," + str(sim._max_queue_length) + "\n"
                     )
                     f.flush()
+
+                    if args.actor_stats:
+                        actor_stats_file = path.join(RESULTS_DIR, args.prefix + 'actor_' + args.policy + '_' +
+                                                     str(args.cost_exponent) + '_' + str(args.service_time) + ".csv")
+                        if not path.exists(actor_stats_file):
+                            with open(actor_stats_file, 'w') as fp:
+                                fp.write('cost-exponent,actor,time,changes,max-changes,path-len\n')
+
+                        with open(actor_stats_file, 'a') as fp:
+                            for actor in range(len(sim.actor_list)):
+                                for (time, changes, max_changes, length) in sim.actor_list[actor].history:
+                                    fp.write(str(args.cost_exponent) + ',' + str(actor) + ',' + str(time) + ',' +
+                                             str(changes) + ',' + str(max_changes) + ',' + str(length) + "\n")
+                            fp.flush()
+
         f.close()
 
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description=__doc__)
+    argparser.add_argument(
+        '--actor-stats',
+        action='store_true',
+        help="Record the actor's queue history for the entire test")
     argparser.add_argument(
         '--height',
         default=SCREEN_HEIGHT,
@@ -182,6 +201,10 @@ if __name__ == "__main__":
         '-p', '--policy',
         default=DEFAULT_POLICY_NAME,
         help='Policy to use')
+    argparser.add_argument(
+        '--prefix',
+        default="",
+        help='Prefix on results file name')
     argparser.add_argument(
         '-g', '--generator',
         default=DEFAULT_GENERATOR_NAME,

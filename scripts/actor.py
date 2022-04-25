@@ -18,6 +18,11 @@ class Actor:
         self.screen = screen
         self.radius = -1
         self.travel_dist = 0
+        self.current_goal = None
+        self.changes_since_last_completion = 0
+        self.max_changes_before_completion = 0
+        self.history = []
+        self.history.append((0, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
 
     def _move(self, sim_time):
         """move towards the goal
@@ -25,6 +30,20 @@ class Actor:
 
         if len(self.path) == 0:
             return
+
+        if self.current_goal is None:
+            # reset the change count
+            self.changes_since_last_completion = 0
+            self.current_goal = self.path[0]
+            self.history.append((sim_time, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
+        else:
+            if self.path[0] != self.current_goal:
+                # target changed -- track it for statistics
+                self.current_goal = self.path[0]
+                self.changes_since_last_completion += 1
+                if self.max_changes_before_completion < self.changes_since_last_completion:
+                    self.max_changes_before_completion = self.changes_since_last_completion
+                self.history.append((sim_time, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
 
         dir = [
             self.path[0].location[0] - self.pos[0],
@@ -48,6 +67,8 @@ class Actor:
                 round(self.path[0].location[1], 5)
             ]
             self.travel_dist += dist
+
+            self.current_goal = None
 
             if (len(self.path) >= 1):
                 print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.path[0].location))

@@ -56,11 +56,14 @@ def parse_state_data(files):
 
     df = pd.concat(df_list, ignore_index=True, sort=False)
 
+    # set the graph separations
+    # graphs = [(0, 0.5, 'low'), (0.5, 20, 'high')]
+    graphs = [(0.5, 20, 'high')]
+
     # plot vs cost exponent
-    # for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
     n = len(set(df['cost-exponent']))
     colour_list = distinctipy.get_colors(n)  # colours.values(n)
-    for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
+    for l, h, label in graphs:
         for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
             colour_index = 0
             fig, ax = plt.subplots()
@@ -78,7 +81,7 @@ def parse_state_data(files):
             fig.savefig('plot_lamda_{}_{}.pdf'.format(col, label))
 
     # plot vs Lambda
-    for l, h, label in [(0, 0.5, 'low'), (0.5, 20, 'high')]:
+    for l, h, label in graphs:
         n = len(set(df[(df['lambda'] >= l) * (df['lambda'] <= h)]['lambda']))
         colour_list = distinctipy.get_colors(n)  # colours.values(n)
         for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
