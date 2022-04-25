@@ -149,7 +149,7 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
     iteration_limit = False
 
     while time() - s_time < max_solver_time:
-        candidate_tours = deepcopy(tours)
+        candidate_tours = deepcopy(best_tours)
 
         deleted_vertices, candidate_tours = random_deletion(candidate_tours, p=2)
         # if random() < 0.8:
@@ -161,7 +161,7 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
 
         if candidate_tour_cost < best_cost:
             best_cost = candidate_tour_cost
-            best_tours = deepcopy(candidate_tours)
+            best_tours = candidate_tours
             iterations_since_last_improvement = 0
             print("improved cost", best_cost)
         else:
