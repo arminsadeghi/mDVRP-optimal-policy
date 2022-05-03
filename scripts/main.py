@@ -101,6 +101,12 @@ def multiple_sims(args):
     # just need to run once... giving them unique negative values in case we want to graph
     # them
     # policies = ['batch_tsp', 'tsp', 'quad_wait_tsp']
+    # policies = ['quad_wait_tsp']
+    policies = [args.policy]
+    # exponents = [[-2], [-1], [1, 1.5, 2, 2.5, 3, 4, 5, 10]]
+    # exponents = [[1, 2]]
+    exponents = [[args.cost_exponent], ]
+
     if len(args.prefix) != 0 and args.prefix[-1] != '_':
         args.prefix = args.prefix + '_'
 
@@ -114,17 +120,16 @@ def multiple_sims(args):
         else:
             f = open(results_file_name, 'a')
 
-        # for seed in [2, 6, 42, 52, 97, 35, 81, 1932, 493, 89234657]:
-        for seed in [2, 6, 42, 52, 97]:
-            args.seed = seed
+        for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98]:  # []:
+            # for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
+            # for lam in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:  # []:
 
             for e in exps:
 
                 args.cost_exponent = e
 
-                # for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
-                for lam in [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98]:  # []:
-                    # for lam in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:  # []:
+                for seed in [21, 6, 42, 52, 97]:
+                    args.seed = seed
                     print("================= LAMBDA: {:.2f} =================".format(lam))
                     args.lambd = lam
                     sim = simulate(args)
