@@ -19,24 +19,15 @@ width = 8  # 3.487
 height = width / 1.5
 
 
-def parse_state_data(files):
+def parse_state_data(files, prefix):
 
     sb.set_theme(style="darkgrid")
     sb.set()
 
-    colours = XKCD_ColourPicker()
-    cols = []
-    cols.extend(colours.values(1, "adobe"))
-    cols.extend(colours.values(1, "darkish pink"))
-    cols.extend(colours.values(1, "straw"))
-    cols.extend(colours.values(1, "rich blue"))
-    cols.extend(colours.values(1, "olive green"))
-
-    colours_policy = colours.values(2)
-
-    colours_lambda = [
-        colours.values(6), colours.values(9),
-    ]
+    if prefix is not None:
+        prefix = prefix+'_'
+    else:
+        prefix = ''
 
     plt.rc('font', family='serif', serif='Times')
     plt.rc('text', usetex=True)
@@ -61,6 +52,7 @@ def parse_state_data(files):
     graphs = [(0.5, 20, 'high')]
 
     # plot vs cost exponent
+    # df = df[(df['cost-exponent'] >= 1) * (df['cost-exponent'] <= 3)]
     n = len(set(df['cost-exponent']))
     colour_list = distinctipy.get_colors(n)  # colours.values(n)
     for l, h, label in graphs:
@@ -78,7 +70,7 @@ def parse_state_data(files):
             handles, labels = ax.get_legend_handles_labels()
             ax.legend(handles=handles[0:], labels=labels[0:], loc='upper left', title='Cost Exponent (p)')
             fig.set_size_inches(width, height)
-            fig.savefig('plot_lamda_{}_{}.pdf'.format(col, label))
+            fig.savefig('{}plot_lamda_{}_{}.pdf'.format(prefix, col, label))
 
     # plot vs Lambda
     for l, h, label in graphs:
@@ -97,7 +89,7 @@ def parse_state_data(files):
             handles, labels = ax.get_legend_handles_labels()
             ax.legend(handles=handles[0:], labels=labels[0:], title='Lambda')
             fig.set_size_inches(width, height)
-            fig.savefig('plot_cost_{}_{}.pdf'.format(col, label))
+            fig.savefig('{}plot_cost_{}_{}.pdf'.format(prefix, col, label))
 
 
 if __name__ == "__main__":
@@ -106,6 +98,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '-f', '--file', nargs='*', default=[],
         help='list of stat files to load')
+    parser.add_argument(
+        '-p', '--prefix', default=None,
+        help='prefix to add to graph names')
 
     args = parser.parse_args()
-    parse_state_data(args.file)
+    parse_state_data(args.file, args.prefix)
