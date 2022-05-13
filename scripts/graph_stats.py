@@ -47,16 +47,39 @@ def parse_state_data(files, prefix):
 
     df = pd.concat(df_list, ignore_index=True, sort=False)
 
+    # extract some different relationships from the data frame
+    df['avg-and-max-wait'] = df['avg-wait-time'] + df['max-wait-time']
+
+    # df = df.loc[(df['cost-exponent'] >= -2) * (df['cost-exponent'] <= 2)]
+    df = df.loc[(df['lambda'] <= 0.95)]
+    df = df.loc[
+        (df['cost-exponent'] == -4) +
+        (df['cost-exponent'] == -3) +
+        (df['cost-exponent'] == -2) +
+        (df['cost-exponent'] == -1) +
+        (df['cost-exponent'] == 1) +
+        (df['cost-exponent'] == 1.5) +
+        (df['cost-exponent'] == 2)
+    ]
+
+    ces = set(df['cost-exponent'])
+    df_d = df.loc[df['cost-exponent'] == 1.0]
+    for ce in ces:
+        df_n = df.loc[df['cost-exponent'] == ce]
+        df.loc[df['cost-exponent'] == ce, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
+        df.loc[df['cost-exponent'] == ce, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
+        df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+
     # set the graph separations
     # graphs = [(0, 0.5, 'low'), (0.5, 20, 'high')]
-    graphs = [(0.5, 20, 'high')]
+    graphs = [(0.5, 2.1, 'high')]
 
     # plot vs cost exponent
     # df = df[(df['cost-exponent'] >= 1) * (df['cost-exponent'] <= 3)]
     n = len(set(df['cost-exponent']))
     colour_list = distinctipy.get_colors(n)  # colours.values(n)
     for l, h, label in graphs:
-        for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
+        for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist', 'avg-and-max-wait', 'avg-ratio', 'max-ratio', 'dist-ratio']:
             colour_index = 0
             fig, ax = plt.subplots()
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
@@ -68,7 +91,17 @@ def parse_state_data(files, prefix):
             ax.set_xlabel("Lambda")
             # ax.set_ylabel("Speed (m/s)")
             handles, labels = ax.get_legend_handles_labels()
-            ax.legend(handles=handles[0:], labels=labels[0:], loc='upper left', title='Cost Exponent (p)')
+            for i in range(len(labels)):
+                if labels[i] == '-1.0':
+                    labels[i] = 'tsp'
+                if labels[i] == '-2.0':
+                    labels[i] = 'batch'
+                if labels[i] == '-3.0':
+                    labels[i] = '80/20 W'
+                if labels[i] == '-4.0':
+                    labels[i] = '50/50 W'
+
+            ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent')
             fig.set_size_inches(width, height)
             fig.savefig('{}plot_lamda_{}_{}.pdf'.format(prefix, col, label))
 
@@ -76,7 +109,7 @@ def parse_state_data(files, prefix):
     for l, h, label in graphs:
         n = len(set(df[(df['lambda'] >= l) * (df['lambda'] <= h)]['lambda']))
         colour_list = distinctipy.get_colors(n)  # colours.values(n)
-        for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist']:
+        for col in ['avg-wait-time', 'max-wait-time', 'total-travel-distance', 'avg-task-dist', 'avg-and-max-wait', 'avg-ratio', 'max-ratio']:
             colour_index = 0
             fig, ax = plt.subplots()
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
