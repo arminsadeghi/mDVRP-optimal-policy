@@ -51,7 +51,7 @@ def parse_state_data(files, prefix):
     df['avg-and-max-wait'] = df['avg-wait-time'] + df['max-wait-time']
 
     # df = df.loc[(df['cost-exponent'] >= -2) * (df['cost-exponent'] <= 2)]
-    df = df.loc[(df['lambda'] <= 0.95)]
+    # df = df.loc[(df['lambda'] <= 0.95)]
     df = df.loc[
         (df['cost-exponent'] == -4) +
         (df['cost-exponent'] == -3) +
