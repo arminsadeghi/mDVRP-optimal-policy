@@ -35,7 +35,7 @@ class BadBusGen(Generator):
         odd = True
 
         sim_time = 1
-        next_time = self.service_time
+        next_time = self.service_time + 0.1
 
         while True:
 
