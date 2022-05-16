@@ -35,9 +35,10 @@ class BadBusGen(Generator):
         odd = True
 
         sim_time = 1
-        next_time = 1.1
+        next_time = self.service_time
 
         while True:
+
             # create one task right beside the current one
             tasks.append(Task(
                 id=len(tasks),
@@ -46,7 +47,7 @@ class BadBusGen(Generator):
                 service_time=self.service_time
             ))
 
-            if not first_time:
+            if not first_time and len(tasks) < 10:
                 # and two tasks on the other side of the map
                 # TODO: Fixed service time
                 tasks.append(Task(
@@ -65,7 +66,6 @@ class BadBusGen(Generator):
             first_time = False
 
             sim_time += next_time
-            next_time = self.service_time + 0.1
             odd = not odd
 
             if self.max_time is not None:
