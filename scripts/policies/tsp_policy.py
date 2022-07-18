@@ -65,18 +65,11 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix):
         best_index = len(tours[0])
         min_cost = inf
         for _i in range(len(tours)):
-            for _j in range(1, len(tours[_i]) - 1):
-                insertion_cost = distance_matrix[(
-                    tours[_i][_j], vertex
-                )]
+            for _j in range(0, len(tours[_i]) - 1):
+                insertion_cost = distance_matrix[(tours[_i][_j], vertex)] + \
+                    distance_matrix[(vertex, tours[_i][_j + 1])]
 
-                insertion_cost += distance_matrix[(
-                    tours[_i][_j + 1], vertex
-                )]
-
-                insertion_cost -= distance_matrix[(
-                    tours[_i][_j], tours[_i][_j + 1]
-                )]
+                insertion_cost -= distance_matrix[(tours[_i][_j], tours[_i][_j + 1])]
 
                 if insertion_cost < min_cost:
                     best_tour = _i
@@ -84,21 +77,16 @@ def min_cost_insertion(tours, deleted_vertices, distance_matrix):
                     min_cost = insertion_cost
 
             # check the cost of appending
-            _j = len(tours[_i]) - 1
             insertion_cost = distance_matrix[(
-                tours[_i][_j], vertex
+                tours[_i][-1], vertex
             )]
             if insertion_cost < min_cost:
                 best_tour = _i
-                best_index = _j
+                best_index = len(tours[_i])
                 min_cost = insertion_cost
 
-        if best_index > len(tours[best_tour]) - 2:
-            tours[best_tour].append(vertex)
-        else:
-            tours[best_tour].insert(
-                best_index + 1, vertex
-            )
+        tours[best_tour].insert(best_index + 1, vertex)
+
     return tours
 
 
