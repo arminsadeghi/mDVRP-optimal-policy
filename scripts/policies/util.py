@@ -1,6 +1,6 @@
 from math import sqrt
 from Task import Task, ServiceState
-
+from random import randint
 
 def euc_distance(task1, task2):
     return sqrt(
@@ -32,17 +32,24 @@ def get_distance_matrix(actors, tasks):
     return distance_matrix, task_indices
 
 
-def assign_tours_to_actors(actors, tasks, tours, task_indices):
+def assign_tours_to_actors(actors, tasks, tours, task_indices, alpha=1):
     for actor in actors:
         actor.path = []
 
     for actor_index in range(len(actors)):
-        for _i in range(1, len(tours[actor_index])):
+
+        tour_len = len( tours[actor_index] ) - 1
+        if alpha == 1:
+            tour_start = 1
+        else:
+            tour_len = min( tour_len, max( 1, int( tour_len * alpha ) ) )
+            tour_start = randint( 1, len( tours[actor_index] ) - tour_len )
+            print( f"assigning a tour of {tour_len} stops starting at {tour_start}/{len(tours[actor_index])}")
+
+        for _i in range(tour_start, tour_start+tour_len):
             index = tours[actor_index][_i]
             task_index = task_indices[index]
             actors[actor_index].path.append(tasks[task_index])
-        actors[actor_index].path.append(
-            Task(-1, [0.5, 0.5], -1)
-        )
+        actors[actor_index].path.append( Task(-1, [0.5, 0.5], -1) )
 
     return actors
