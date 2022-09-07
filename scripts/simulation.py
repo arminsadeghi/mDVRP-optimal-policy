@@ -302,7 +302,9 @@ class Simulation:
             if len(self.serviced_tasks) >= max_tasks:
                 return -1
 
-        if self._policy_refresh_required or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time):
+        if self._policy_refresh_required \
+            or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time) \
+            or (self.next_task >= len(self.task_list) and len(self.serviced_tasks) < len(self.task_list) ):
             while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
                 if self.next_task > len(self.task_list) - 1:
                     break
