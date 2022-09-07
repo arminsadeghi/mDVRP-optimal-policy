@@ -128,7 +128,7 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, alpha=1):
+def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
     """tsp policy
 
     Args:

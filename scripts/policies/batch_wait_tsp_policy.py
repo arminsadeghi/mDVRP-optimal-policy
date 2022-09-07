@@ -26,7 +26,7 @@ def random_task_assignment(tours, num_tasks):
     return tours
 
 
-def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time):
+def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent):
     """calculate the total wait time of the tasks given the tour
 
     Args:
@@ -39,16 +39,18 @@ def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_
     Returns:
         _type_: returns the cost of the tour
     """
+
     cost_to_vertex = [0]
-
     for _i in range(len(tour) - 1):
-        cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(
-            tour[_i], tour[_i + 1]
-        )] + service_time)
+        cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(tour[_i], tour[_i + 1])] + service_time)
 
-    cost = 0
-    for _i in range(len(tour)):
-        cost += cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
+    if cost_exponent:
+        cost = 0
+        for _i in range(len(tour)):
+            wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
+            cost += wait_time ** cost_exponent
+    else:
+        cost = cost_to_vertex[-1]
 
     return cost
 
@@ -70,26 +72,24 @@ def random_deletion(tours, p=1):
         if len(tours[rnd_actor]) < 2:
             continue
 
-        rnd_index = randint(1, len(tours[rnd_actor]) - 1)
-        if tours[rnd_actor][rnd_index] not in deleted_vertices:
-            deleted_vertices.append(tours[rnd_actor][rnd_index])
-            candidate_tour[rnd_actor].remove(tours[rnd_actor][rnd_index])
+        rnd_index = randint(1, len(candidate_tour[rnd_actor]) - 1)
+        deleted_vertices.append(candidate_tour[rnd_actor].pop(rnd_index))
     return deleted_vertices, candidate_tour
 
 
-def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time):
+def min_cost_insertion(tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent):
     shuffle(deleted_vertices)
     for vertex in deleted_vertices:
         best_tour = None
         best_index = None
         min_cost = inf
         for key, tour in tours.items():
-            prev_cost = tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time)
+            prev_cost = tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
             candid_tour = deepcopy(tour)
             for _j in range(1, len(tour)+1):
 
                 candid_tour.insert(_j, vertex)
-                candid_cost = tour_cost(candid_tour, distance_matrix, tasks, task_indices, current_time, service_time)
+                candid_cost = tour_cost(candid_tour, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
                 candid_tour.pop(_j)
 
                 insertion_cost = candid_cost - prev_cost
@@ -121,14 +121,14 @@ def rnd_insertion(tours, deleted_vertices):
     return tours
 
 
-def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, service_time):
+def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent):
     total_cost = 0
     for _i in range(len(tours)):
-        total_cost += tour_cost(tours[_i], distance_matrix, tasks, task_indices, current_time, service_time)
+        total_cost += tour_cost(tours[_i], distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
     return total_cost
 
 
-def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=None, eta=1):
+def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
     """tsp policy
 
     Args:
@@ -136,33 +136,54 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
         tasks (_type_): the tasks arrived
     """
 
-    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
-    tours = initialize_tours(actors)
+    idle_actors = []
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors.append(actor)
+
+    if not len(idle_actors):
+        return True
+
+    distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
+    tours = initialize_tours(idle_actors)
 
     best_tours = random_task_assignment(tours, len(task_indices))
 
-    best_cost = total_tour_cost(best_tours, distance_matrix, tasks, task_indices, current_time, service_time)
+    best_cost = total_tour_cost(best_tours, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
     s_time = time()
     iterations_since_last_improvement = 0
     iter_count = 0
     print("initial cost", best_cost)
+    iteration_limit = False
+
     while time() - s_time < max_solver_time:
         candidate_tours = deepcopy(best_tours)
 
         deleted_vertices, candidate_tours = random_deletion(candidate_tours, p=2)
-        candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks, task_indices, current_time, service_time)
-        candidate_tour_cost = total_tour_cost(candidate_tours, distance_matrix, tasks, task_indices, current_time, service_time)
+        # if random() < 0.8:
+        candidate_tours = min_cost_insertion(candidate_tours, deleted_vertices, distance_matrix, tasks,
+                                             task_indices, current_time, service_time, cost_exponent)
+        # else:
+        #     candidate_tours = rnd_insertion(candidate_tours, deleted_vertices)
+        candidate_tour_cost = total_tour_cost(candidate_tours, distance_matrix, tasks, task_indices, current_time, service_time, cost_exponent)
 
         if candidate_tour_cost < best_cost:
             best_cost = candidate_tour_cost
             best_tours = candidate_tours
             iterations_since_last_improvement = 0
-            # print("improved cost", best_cost)
+            print("improved cost", best_cost)
         else:
             iterations_since_last_improvement += 1
 
         if iterations_since_last_improvement > 1000:
+            # print("Hit Iteration Limit")
+            iteration_limit = True
             break
+
         iter_count += 1
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+
+    if not iteration_limit:
+        print("WARNING: Time expired while searching")
+
+    assign_tours_to_actors(idle_actors, tasks, best_tours, task_indices, eta=eta)
     return False

@@ -83,6 +83,10 @@ class Simulation:
                 self.cost_exponent = policy_args['cost_exponent']
             except KeyError:
                 self.cost_exponent = 1
+            try:
+                self.eta = policy_args['eta']
+            except KeyError:
+                self.eta = 1
 
     def load_generator(self, generator_name, generator_args):
         # load the generator
@@ -303,8 +307,8 @@ class Simulation:
                 return -1
 
         if self._policy_refresh_required \
-            or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time) \
-            or (self.next_task >= len(self.task_list) and len(self.serviced_tasks) < len(self.task_list) ):
+                or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time) \
+                or (self.next_task >= len(self.task_list) and len(self.serviced_tasks) < len(self.task_list)):
             while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
                 if self.next_task > len(self.task_list) - 1:
                     break
@@ -312,7 +316,8 @@ class Simulation:
                 self.next_task += 1
 
             self._policy_refresh_required = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
-                                                         current_time=self.sim_time, service_time=self.service_time, cost_exponent=self.cost_exponent)
+                                                         current_time=self.sim_time, service_time=self.service_time,
+                                                         cost_exponent=self.cost_exponent, eta=self.eta)
 
         if self._show_sim:
             #  draw the limits of the environment

@@ -2,7 +2,7 @@ from random import randint
 from Task import Task, ServiceState
 
 
-def policy(actors, tasks, current_time=0, service_time=0):
+def policy(actors, tasks, current_time=0, service_time=0, cost_exponent=1, eta=1):
     for actor in actors:
         actor.path = []
 

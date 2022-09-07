@@ -109,7 +109,7 @@ def total_tour_cost(tours, distance_matrix):
     return total_cost
 
 
-def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1):
+def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1):
     """tsp policy
 
     Args:
@@ -149,5 +149,5 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
         if iterations_since_last_improvement > 1000:
             break
         iter_count += 1
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    assign_tours_to_actors(idle_actors, tasks, best_tours, task_indices, eta=eta)
     return False
