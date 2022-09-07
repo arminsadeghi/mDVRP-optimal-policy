@@ -12,17 +12,19 @@ TICK_TIME = 0.01
 DEFAULT_POLICY_NAME = "random_assgn"
 DEFAULT_GENERATOR_NAME = "uniform"
 GENERATOR_ARGS = {
-    'min': -1,
+    'min': 0,
     'max': 1,
     'distributions': [
-        [0.5, 0.1],
-        [-0.5, 0.1]
+        [0.75, 0.1],
+        [0.25, 0.1]
     ],
     'seed': None,
     'dim': 2,
-    'mix': 0.05,
+    'mix': 0.5,
 }
 SHOW_SIM = False
+
+DEFAULT_POLICY_COST_EXPONENT = 2
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000

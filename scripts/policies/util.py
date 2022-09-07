@@ -1,5 +1,5 @@
 from math import sqrt
-from Task import Task
+from Task import Task, ServiceState
 
 
 def euc_distance(task1, task2):
@@ -18,10 +18,9 @@ def get_distance_matrix(actors, tasks):
         task_indices.append(-1)
 
     for task in tasks:
-        if task.serviced == True:
-            continue
-        task_locations.append(task.location)
-        task_indices.append(task.id)
+        if task.service_state == ServiceState.WAITING:
+            task_locations.append(task.location)
+            task_indices.append(task.id)
 
     distance_matrix = {}
     for _i in range(len(task_locations)):
@@ -43,7 +42,7 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices):
             task_index = task_indices[index]
             actors[actor_index].path.append(tasks[task_index])
         actors[actor_index].path.append(
-            Task(-1, [0, 0], -1)
+            Task(-1, [0.5, 0.5], -1)
         )
 
     return actors
