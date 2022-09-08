@@ -128,6 +128,11 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
     distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
     tours = initialize_tours(idle_actors)
 
+    total = len(task_indices) - len(idle_actors)
+    if total <= 0:
+        # nothing to do
+        return
+
     best_tours = random_task_assignment(tours, len(task_indices))
 
     best_cost = total_tour_cost(best_tours, distance_matrix)
