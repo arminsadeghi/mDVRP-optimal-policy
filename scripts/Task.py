@@ -1,6 +1,13 @@
 from sqlite3 import DataError
 from config import SERVICE_TIME
 import numpy as np
+from enum import Enum
+
+
+class ServiceState(Enum):
+    WAITING = 0
+    IN_SERVICE = 1
+    SERVICED = 2
 
 
 class Task:
@@ -8,7 +15,7 @@ class Task:
         self.id = id
         self.location = location
         self.time = time
-        self.serviced = False
+        self.service_state = ServiceState.WAITING
         self.time_serviced = -1
         self.service_time = service_time
 

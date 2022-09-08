@@ -5,15 +5,15 @@ from sqlite3 import DataError
 from matplotlib.pyplot import show
 from actor import Actor
 from config import *
-from random import random, expovariate
-from Task import Task
+from random import random, expovariate, seed
+from Task import Task, ServiceState
 import pygame
 from importlib import import_module
 from math import sqrt
 
 
 class Simulation:
-    def __init__(self, policy_name, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
+    def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
                  max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True):
         self.num_actors = num_actors
@@ -32,8 +32,11 @@ class Simulation:
         self.max_time = max_time
         self.max_tasks = max_tasks
 
+        # load the draw method
+        self.load_generator(generator_name=generator_name, generator_args=generator_args)
+
         # load the policy
-        self.load_policy(policy_name=policy_name)
+        self.load_policy(policy_name=policy_name, policy_args=policy_args)
 
         # preload all the the tasks
         self.reset()
@@ -42,7 +45,7 @@ class Simulation:
         self.actor_list = [
             Actor(
                 id=i+1,
-                pos=[0, 0],
+                pos=[0.5, 0.5],
                 service_time=self.service_time,
                 speed=self.actor_speed,
                 screen=self.screen
@@ -50,7 +53,7 @@ class Simulation:
 
         self.serviced_tasks = []
         self.sim_time = 0
-        self.next_time = expovariate(self.pois_lambda)
+        self.next_time = 0
         self.time_last_arrival = 0
         self.sim_start_time = 0
         self._max_served_time = -1
@@ -58,26 +61,45 @@ class Simulation:
         self._avg_served_time = 0
         self._total_travel_distance = 0
         self._max_travel_distance = 0
+        self._max_queue_length = 0
 
-        self._policy_refresh_required = False
+        # reset the random number generator
+        self.generator.reset()
 
         if task_list is None:
-            self._draw_all_tasks(max_time=self.max_time, max_tasks=self.max_tasks)
+            self._draw_all_tasks()
         else:
             self.task_list = task_list
 
-    def load_policy(self, policy_name):
+    def load_policy(self, policy_name, policy_args):
         # load the policy
         self.policy_name = "{}_policy".format(policy_name)
         policy_mod = import_module('.'+self.policy_name, package='policies')
         self._policy = policy_mod.policy
+        if policy_args is not None:
+            try:
+                self.cost_exponent = policy_args['cost_exponent']
+            except KeyError:
+                self.cost_exponent = 1
+            try:
+                self.eta = policy_args['eta']
+            except KeyError:
+                self.eta = 1
+
+    def load_generator(self, generator_name, generator_args):
+        # load the generator
+        self.generator_name = generator_name
+        self.generator_args = generator_args
+        gen_mod = import_module('.'+self.generator_name, package='generators')
+        generator_fn = gen_mod.get_generator_fn()
+        self.generator = generator_fn(**self.generator_args)
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
         """
         max_time = -1
         for task in self.task_list:
-            if task.serviced == True:
+            if task.service_state is not ServiceState.SERVICED:
                 continue
             time = self.sim_time - task.time
             if time > max_time:
@@ -104,32 +126,14 @@ class Simulation:
 
         return sqrt(variance / (len(self.serviced_tasks) - adjustment))
 
-    def _draw_all_tasks(self, max_time=None, max_tasks=MAX_SERVICED_TASKS):
+    def _draw_all_tasks(self):
         """
         Draw all of the tasks for the simulation according to the defined max time or max serviced tasks
         requested.  Note that we are drawing the time for the next task to be inserted, assuming that we
         are inserting one now.
         """
 
-        self.task_list = []
-        sim_time = self.next_time
-        while True:
-            next_time = expovariate(self.pois_lambda)
-            new_task = Task(
-                id=len(self.task_list),
-                location=[2*random() - 1, 2*random() - 1],
-                time=sim_time,
-            )
-            self.task_list.append(new_task)
-            sim_time += next_time
-
-            if max_time is not None:
-                if sim_time > max_time:
-                    break
-            else:
-                if len(self.task_list) >= max_tasks:
-                    break
-
+        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda)
         # create an index into the list of tasks
         self.next_task = 0
 
@@ -139,8 +143,8 @@ class Simulation:
 
     def _get_location_on_screen(self, location):
         return [
-            self._margin + location[0]*(self._env_size)/2.0 + self._env_size/2.0,
-            self._margin - location[1]*self._env_size/2.0 + self._env_size/2.0
+            self._margin + location[0]*self._env_size,
+            self._margin + self._env_size - location[1]*self._env_size
         ]
 
     def _draw_rect(self, location, color, size):
@@ -153,7 +157,7 @@ class Simulation:
         """
         for task in self.task_list[::-1]:
 
-            if task.serviced:
+            if task.service_state is ServiceState.SERVICED:
                 continue
 
             task_loc_screen = self._get_location_on_screen(task.location)
@@ -192,27 +196,22 @@ class Simulation:
                 self._get_location_on_screen(path[_i].location),
                 self._get_location_on_screen(path[_i+1].location))
 
-        if self.actor_list[actor_index].next_goal != None:
-            if path != []:
-                pygame.draw.line(
-                    self.screen, (255, 255, 255),
-                    self._get_location_on_screen(self.actor_list[actor_index].next_goal.location),
-                    self._get_location_on_screen(path[0].location))
+        if len(self.actor_list[actor_index].path):
             pygame.draw.line(
                 self.screen, (255, 255, 255),
                 self._get_location_on_screen(self.actor_list[actor_index].pos),
-                self._get_location_on_screen(self.actor_list[actor_index].next_goal.location))
+                self._get_location_on_screen(self.actor_list[actor_index].path[0].location))
 
-        if self.actor_list[actor_index].next_goal != None:
-            task_loc_screen = self._get_location_on_screen(self.actor_list[actor_index].next_goal.location)
-            self._draw_rect(
-                location=task_loc_screen,
-                color=(0, 255, 0),
-                size=10
-            )
-            elapsed_time_text = self.elapsed_time_text.render(
-                str(round(self.sim_time - self.actor_list[actor_index].next_goal.time, 2)), False, (255, 255, 255))
-            self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
+            if self.actor_list[actor_index].path[0].id != -1:
+                task_loc_screen = self._get_location_on_screen(self.actor_list[actor_index].path[0].location)
+                self._draw_rect(
+                    location=task_loc_screen,
+                    color=(0, 255, 0),
+                    size=10
+                )
+                elapsed_time_text = self.elapsed_time_text.render(
+                    str(round(self.sim_time - self.actor_list[actor_index].path[0].time, 2)), False, (255, 255, 255))
+                self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
 
     def _show_sim_info(self):
         try:
@@ -273,8 +272,11 @@ class Simulation:
         if rval.id == -1:
             return
 
+        if self.task_list[rval.id].service_state == ServiceState.SERVICED:
+            raise ValueError("Double trouble -- Task already serviced!")
+
         #  set the task to be serviced
-        self.task_list[rval.id].serviced = True
+        self.task_list[rval.id].service_state = ServiceState.SERVICED
         self.task_list[rval.id].time_serviced = self.sim_time
         print("[{:.2f}]: Service done at location {}".format(self.sim_time, rval.location))
         self.serviced_tasks.append(rval.id)
@@ -292,22 +294,6 @@ class Simulation:
             print("[{:.2f}] no screen provided".format(round(self.sim_time, 2)))
             return -1
 
-        if self._policy_refresh_required or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time):
-            while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
-                if self.next_task > len(self.task_list) - 1:
-                    break
-                print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
-                self.next_task += 1
-
-            self._policy_refresh_required = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
-                                                         current_time=self.sim_time, service_time=self.service_time)
-
-        if self._show_sim:
-            #  draw the limits of the environment
-            pygame.draw.rect(self.screen,
-                             (255,  255,  255),
-                             (self._margin, self._margin, self._env_size, self._env_size), 2)
-
         # one clock tick for the simulation time
         self.sim_time += tick_time
 
@@ -317,6 +303,24 @@ class Simulation:
         else:
             if len(self.serviced_tasks) >= max_tasks:
                 return -1
+
+        new_task_added = False
+        while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
+            if self.next_task > len(self.task_list) - 1:
+                break
+            print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
+            self.next_task += 1
+            new_task_added = True
+
+        self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task], new_task_added=new_task_added,
+                     current_time=self.sim_time, service_time=self.service_time,
+                     cost_exponent=self.cost_exponent, eta=self.eta)
+
+        if self._show_sim:
+            #  draw the limits of the environment
+            pygame.draw.rect(self.screen,
+                             (255,  255,  255),
+                             (self._margin, self._margin, self._env_size, self._env_size), 2)
 
         if self._show_sim:
             self._plot_tasks()
@@ -331,6 +335,10 @@ class Simulation:
             if self._show_sim:
                 self._draw_actor_path(actor_index)
                 self._show_actor_pos(actor_index)
+
+        for actor in self.actor_list:
+            if len(actor.path) > self._max_queue_length:
+                self._max_queue_length = len(actor.path)
 
         if self._show_sim:
             self._show_sim_info()

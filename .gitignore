@@ -1,2 +1,10 @@
 *.pyc
 *.txt
+
+# picked task lists
+*.pkl
+
+# data/stats files and generated graphs
+*.pdf
+*.csv
+
