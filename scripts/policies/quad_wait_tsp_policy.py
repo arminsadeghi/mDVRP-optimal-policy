@@ -128,13 +128,16 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
     """tsp policy
 
     Args:
         actors (_type_): actors in the environment
         tasks (_type_): the tasks arrived
     """
+
+    if not new_task_added:
+        return False
 
     distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)

@@ -63,8 +63,6 @@ class Simulation:
         self._max_travel_distance = 0
         self._max_queue_length = 0
 
-        self._policy_refresh_required = False
-
         # reset the random number generator
         self.generator.reset()
 
@@ -306,18 +304,17 @@ class Simulation:
             if len(self.serviced_tasks) >= max_tasks:
                 return -1
 
-        if self._policy_refresh_required \
-                or (self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time) \
-                or (self.next_task >= len(self.task_list) and len(self.serviced_tasks) < len(self.task_list)):
-            while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
-                if self.next_task > len(self.task_list) - 1:
-                    break
-                print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
-                self.next_task += 1
+        new_task_added = False
+        while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
+            if self.next_task > len(self.task_list) - 1:
+                break
+            print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
+            self.next_task += 1
+            new_task_added = True
 
-            self._policy_refresh_required = self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task],
-                                                         current_time=self.sim_time, service_time=self.service_time,
-                                                         cost_exponent=self.cost_exponent, eta=self.eta)
+        self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task], new_task_added=new_task_added,
+                     current_time=self.sim_time, service_time=self.service_time,
+                     cost_exponent=self.cost_exponent, eta=self.eta)
 
         if self._show_sim:
             #  draw the limits of the environment

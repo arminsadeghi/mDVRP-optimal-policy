@@ -128,7 +128,7 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1):
     """tsp policy
 
     Args:
@@ -144,6 +144,9 @@ def policy(actors, tasks, current_time=0, max_solver_time=30, service_time=0, co
     if not len(idle_actors):
         return True
 
+    # TODO: with multiple agents, we need to make sure that we aren't reassigning tasks that
+    #       have already been sent to an agent for handling -- probably need a new
+    #       TASK_ASSIGNED state to be created
     distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
     tours = initialize_tours(idle_actors)
     total = len(task_indices) - len(idle_actors)
