@@ -19,7 +19,7 @@ def get_distance_matrix(actors, tasks):
         task_indices.append(-1)
 
     for task in tasks:
-        if task.service_state == ServiceState.WAITING:
+        if task.is_pending():
             task_locations.append(task.location)
             task_indices.append(task.id)
 

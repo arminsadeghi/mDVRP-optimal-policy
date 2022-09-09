@@ -45,7 +45,8 @@ def simulate(args):
         generator_name=args.generator,
         policy_args={
             'cost_exponent': args.cost_exponent,
-            'eta': args.eta
+            'eta': args.eta,
+            'gamma': args.gamma,
         },
         generator_args=generator_args,
         num_actors=args.actors,
@@ -184,6 +185,11 @@ if __name__ == "__main__":
         default=DEFAULT_POLICY_ETA,
         type=float,
         help='Proportion of policy to execute (batch) (0,1]')
+    argparser.add_argument(
+        '--gamma',
+        default=DEFAULT_POLICY_GAMMA,
+        type=float,
+        help='Insertion threshold [0,1)')
     argparser.add_argument(
         '-c', '--cost-exponent',
         default=DEFAULT_POLICY_COST_EXPONENT,

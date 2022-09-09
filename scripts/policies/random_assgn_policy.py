@@ -2,7 +2,7 @@ from random import randint
 from Task import ServiceState, Task
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, service_time=0, cost_exponent=1, eta=1):
+def policy(actors, tasks, new_task_added=False, current_time=0, service_time=0, cost_exponent=1, eta=1, gamma=0):
 
     if not new_task_added:
         return False

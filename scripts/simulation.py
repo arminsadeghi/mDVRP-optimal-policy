@@ -85,6 +85,10 @@ class Simulation:
                 self.eta = policy_args['eta']
             except KeyError:
                 self.eta = 1
+            try:
+                self.gamma = policy_args['gamma']
+            except KeyError:
+                self.gamma = 1
 
     def load_generator(self, generator_name, generator_args):
         # load the generator
@@ -314,7 +318,7 @@ class Simulation:
 
         self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task], new_task_added=new_task_added,
                      current_time=self.sim_time, service_time=self.service_time,
-                     cost_exponent=self.cost_exponent, eta=self.eta)
+                     cost_exponent=self.cost_exponent, eta=self.eta, gamma=self.gamma)
 
         if self._show_sim:
             #  draw the limits of the environment
