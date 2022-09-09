@@ -10,7 +10,6 @@ fi
 
 for a in ${etas[*]}; do
     for c in ${costs[*]}; do
-        python main.py --multipass --cost-exponent=$c --eta=$a --gamma=0.95 --max-tasks=1000 --policy=hybrid $prefix_str --service-time 1 --generator uniform  > /dev/null 2>&1 &
         python main.py --multipass --cost-exponent=$c --eta=$a --eta-first --gamma=0.95 --max-tasks=1000 --policy=hybrid $prefix_str --service-time 1 --generator uniform  > /dev/null 2>&1 &
     done
 done
