@@ -19,7 +19,7 @@ def get_distance_matrix(actors, tasks):
         task_indices.append(-1)
 
     for task in tasks:
-        if task.service_state == ServiceState.WAITING:
+        if task.is_pending():
             task_locations.append(task.location)
             task_indices.append(task.id)
 
@@ -33,19 +33,18 @@ def get_distance_matrix(actors, tasks):
     return distance_matrix, task_indices
 
 
-def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1):
+def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=False):
     for actor in actors:
         actor.path = []
 
     for actor_index in range(len(actors)):
 
         tour_len = len(tours[actor_index]) - 1
-        if eta == 1:
-            tour_start = 1
-        else:
+        tour_start = 1
+        if eta < 1:
             tour_len = min(tour_len, max(1, int(tour_len * eta)))
-            tour_start = randint(1, len(tours[actor_index]) - tour_len)
-            # tour_start = 1
+            if not eta_first:
+                tour_start = randint(1, len(tours[actor_index]) - tour_len)
             print(f"assigning a tour of {tour_len} stops starting at {tour_start}/{len(tours[actor_index])}")
 
         for _i in range(tour_start, tour_start+tour_len):

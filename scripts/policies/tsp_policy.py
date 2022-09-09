@@ -97,7 +97,27 @@ def total_tour_cost(tours, distance_matrix):
     return total_cost
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=0, eta=1):
+def tasks_waiting(tasks):
+    tasks_waiting = 0
+
+    for task in tasks:
+        if task.is_pending():
+            tasks_waiting += 1
+
+    return tasks_waiting
+
+
+def actors_idle(actors):
+    idle_actors = 0
+
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors += 1
+
+    return idle_actors
+
+
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=0, eta=1, eta_first=False,  gamma=0):
     """tsp policy
 
     Args:
@@ -105,8 +125,9 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         tasks (_type_): the tasks arrived
     """
 
-    if not new_task_added:
-        return False
+    if not (new_task_added or (tasks_waiting(tasks=tasks) and actors_idle(actors=actors))):
+        # nothing to do
+        return
 
     distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)
@@ -133,5 +154,5 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         if iterations_since_last_improvement > 1000:
             break
         iter_count += 1
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    assign_tours_to_actors(actors, tasks, best_tours, task_indices, eta=eta, eta_first=eta_first)
     return False

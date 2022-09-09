@@ -1,4 +1,3 @@
-from sqlite3 import DataError
 from config import SERVICE_TIME
 import numpy as np
 from enum import Enum
@@ -6,8 +5,9 @@ from enum import Enum
 
 class ServiceState(Enum):
     WAITING = 0
-    IN_SERVICE = 1
-    SERVICED = 2
+    ASSIGNED = 1
+    IN_SERVICE = 2
+    SERVICED = 3
 
 
 class Task:
@@ -18,6 +18,11 @@ class Task:
         self.service_state = ServiceState.WAITING
         self.time_serviced = -1
         self.service_time = service_time
+
+    def is_pending(self):
+        if self.service_state == ServiceState.WAITING or self.service_state == ServiceState.ASSIGNED:
+            return True
+        return False
 
     def wait_time(self):
         if self.time_serviced == -1:

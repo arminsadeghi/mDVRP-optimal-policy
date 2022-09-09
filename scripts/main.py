@@ -45,7 +45,9 @@ def simulate(args):
         generator_name=args.generator,
         policy_args={
             'cost_exponent': args.cost_exponent,
-            'eta': args.eta
+            'eta': args.eta,
+            'eta_first': args.eta_first,
+            'gamma': args.gamma,
         },
         generator_args=generator_args,
         num_actors=args.actors,
@@ -109,7 +111,7 @@ def multiple_sims(args):
                                   '_' + str(args.eta) + '_' + str(args.service_time) + ".csv")
     if not path.exists(results_file_name):
         f = open(results_file_name, 'w')
-        f.write('policy,lambda,cost-exponent,eta,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+        f.write('policy,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
     else:
         f = open(results_file_name, 'a')
 
@@ -122,7 +124,7 @@ def multiple_sims(args):
             sim = simulate(args)
             policy = args.policy.replace('_', ' ')
             f.write(
-                str(policy) + "," + str(lam) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+                str(policy) + "," + str(lam) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
                 str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
                 str(sim._total_travel_distance) + "," +
                 str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
@@ -185,6 +187,11 @@ if __name__ == "__main__":
         type=float,
         help='Proportion of policy to execute (batch) (0,1]')
     argparser.add_argument(
+        '--gamma',
+        default=DEFAULT_POLICY_GAMMA,
+        type=float,
+        help='Insertion threshold [0,1)')
+    argparser.add_argument(
         '-c', '--cost-exponent',
         default=DEFAULT_POLICY_COST_EXPONENT,
         type=float,
@@ -239,6 +246,10 @@ if __name__ == "__main__":
         '--show-sim',
         action='store_true',
         help='Display the simulation window')
+    argparser.add_argument(
+        '--eta-first',
+        action='store_true', default=False,
+        help='Force the eta-segment to start at 1')
     argparser.add_argument(
         '--multipass',
         action='store_true',
