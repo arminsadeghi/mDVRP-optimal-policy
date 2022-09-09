@@ -168,7 +168,7 @@ def tasks_waiting(tasks):
     tasks_waiting = 0
 
     for task in tasks:
-        if task.service_state == ServiceState.WAITING:
+        if task.is_pending():
             tasks_waiting += 1
 
     return tasks_waiting
