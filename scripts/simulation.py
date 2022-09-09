@@ -86,6 +86,10 @@ class Simulation:
             except KeyError:
                 self.eta = 1
             try:
+                self.eta_first = policy_args['eta_first']
+            except KeyError:
+                self.eta = False
+            try:
                 self.gamma = policy_args['gamma']
             except KeyError:
                 self.gamma = 1
@@ -318,7 +322,7 @@ class Simulation:
 
         self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task], new_task_added=new_task_added,
                      current_time=self.sim_time, service_time=self.service_time,
-                     cost_exponent=self.cost_exponent, eta=self.eta, gamma=self.gamma)
+                     cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
 
         if self._show_sim:
             #  draw the limits of the environment

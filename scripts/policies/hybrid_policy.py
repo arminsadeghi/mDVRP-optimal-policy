@@ -184,7 +184,7 @@ def actors_idle(actors):
     return idle_actors
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, gamma=0):
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False, gamma=0):
     """tsp policy
 
     Args:
@@ -241,5 +241,5 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
     # check the tours and remove any that are over the threshold
     actors, tours = validate_tours(actors, tasks, best_tours, task_indices, gamma=gamma)
 
-    assign_tours_to_actors(actors, tasks, tours, task_indices, eta=eta)
+    assign_tours_to_actors(actors, tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False
