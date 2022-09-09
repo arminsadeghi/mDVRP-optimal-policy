@@ -53,7 +53,7 @@ def parse_state_data(files, prefix, eta, p):
     # df = df.loc[(df['cost-exponent'] >= -2) * (df['cost-exponent'] <= 2)]
     # df = df.loc[(df['lambda'] <= 0.95)]
     df = df.loc[
-        # (df['cost-exponent'] == -4) +
+        (df['cost-exponent'] == -4) +
         # (df['cost-exponent'] == -3) +
         (df['cost-exponent'] == -2) +
         (df['cost-exponent'] == -1) +
@@ -62,21 +62,36 @@ def parse_state_data(files, prefix, eta, p):
         (df['cost-exponent'] == 2)
     ]
 
+    df = df.loc[
+        (df['lambda'] <= 0.8)
+    ]
+
     ces = set(df['cost-exponent'])
     etas = set(df['eta'])
     policies = set(df['policy'])
-    
-    for eta in etas:
-        df_eta = df.loc[df['eta'] == eta]
-        df_d = df_eta.loc[(df['cost-exponent'] == -2.0)]
-        df_n = df_eta.loc[(df['cost-exponent'] == p)]
-        df_eta.loc[(df_eta['cost-exponent'] == p), 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
-        df_eta.loc[(df_eta['cost-exponent'] == p), 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
-        # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
 
-        disp_postfix = " $\eta$ = "+str(eta)
+    for ce in ces:
+        for eta in etas:
+            row_mask = np.bitwise_and((df['cost-exponent'] == ce), (df['eta'] == eta))
+            df_d = df.loc[np.bitwise_and((df['cost-exponent'] == -2.0), (df['eta'] == 1))]
+            df_n = df.loc[row_mask]
+            df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
+            df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
+            # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
 
-        df_eta.loc[df_eta['cost-exponent'] == eta, 'display-name'] = disp_postfix
+            if ce < 0:
+                ce_str = ""
+            else:
+                ce_str = " $p$="+str(ce)
+
+            disp_postfix = " $\eta$="+str(eta) + ce_str
+
+            df.loc[row_mask, 'display-name'] = df.loc[row_mask, 'policy'] + disp_postfix
+
+    # # filter out the base data
+    # df = df.loc[
+    #     (df['cost-exponent'] != -2)
+    # ]
 
     # set the graph separations
     # graphs = [(0, 0.5, 'low'), (0.5, 1.0, 'high')]
@@ -89,8 +104,8 @@ def parse_state_data(files, prefix, eta, p):
     # colour_list = ['#fa8888', '#ca1111', '#df6699', '#5555fa', '#0000ff', '#6662aa', '#11fc11', '#ffaa21']
 
     for l, h, label in graphs:
-        # , 'avg-and-max-wait', 'avg-ratio', 'max-ratio', 'dist-ratio']:
-        for col in ['avg-wait-time', 'max-wait-time']:
+        # 'avg-wait-time', 'max-wait-time', 'avg-and-max-wait', 'avg-ratio', 'max-ratio', 'dist-ratio']:
+        for col in ['avg-ratio', 'max-ratio']:
             colour_index = 0
             fig, ax = plt.subplots()
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
@@ -114,7 +129,7 @@ def parse_state_data(files, prefix, eta, p):
 
             ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent')
             fig.set_size_inches(width, height)
-            fig.savefig('{}plot_lamda_{}_{}.pdf'.format(prefix, col, label))
+            fig.savefig(f'graphs/{prefix}plot_lamda_{col}_{label}.pdf')
 
         # for col in ['total-travel-distance', 'avg-task-dist']:
         #     colour_index = 0
