@@ -1,28 +1,35 @@
 import numpy as np
-import random
 from generators.generator import Generator
+from generators.uniform import UniformGen
+from Task import Task
 
 
-class UniformGen(Generator):
+class AllGen(UniformGen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def draw(self):
-        v = []
-        for i in range(self.dim):
-            v.append(self.gen.uniform(self.min, self.max))
-        return v
+    def draw_tasks(self, lam):
 
-    def poisson(self, lam):
-        return self.gen.poisson(lam=lam)
+        first_time = 0
+        tasks = []
 
-    def normal(self, loc, scale):
-        return self.gen.normal(loc=loc, scale=scale)
+        assert(self.max_tasks > 0)
+        for i in range(0, self.max_tasks):
+            new_task = Task(
+                id=len(tasks),
+                location=super().draw(),
+                time=0,
+                # TODO: Fixing service time variance proportional to specified time
+                service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
+            )
+            tasks.append(new_task)
+
+        return tasks, first_time
 
 
 def get_generator_fn():
-    return UniformGen
+    return AllGen
 
 
 if __name__ == '__main__':

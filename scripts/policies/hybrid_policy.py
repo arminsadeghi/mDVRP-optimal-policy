@@ -6,6 +6,7 @@ from policies.util import get_distance_matrix, assign_tours_to_actors
 from random import randint, shuffle, random
 from time import time
 from numpy import inf
+from Task import ServiceState
 
 
 def initialize_tours(actors):
@@ -128,7 +129,62 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False,  gamma=0):
+def validate_tours(actors, tasks, tours, task_indices, gamma=1):
+    valid_actors = []
+    valid_tours = []
+
+    # Walk backwards through the list of actors and check each trajectory
+    for actor_index in range(len(actors)-1, -1, -1):
+
+        tour_OK = True
+        tour_len = len(tours[actor_index]) - 1
+        threshold = int(round(gamma * tour_len))
+
+        # if the actor isn't doing anything, we replan regardless
+        if actors[actor_index].is_busy():
+            # note that the tour always starts with the actor's current location (+1)
+            for _i in range(1+threshold, 1+tour_len):
+                index = tours[actor_index][_i]
+                task_index = task_indices[index]
+                if tasks[task_index].service_state == ServiceState.WAITING:
+                    # new task appeared after the threshold - toss this tour as we're already overloaded
+                    print(f"Rejecting path, over threshold:  {_i}/{tour_len+1} [{threshold+1}]")
+                    tour_OK = False
+                    break
+
+        if tour_OK:
+            # move all tasks on the subtour to assigned
+            for _i in range(1, 1+threshold):
+                index = tours[actor_index][_i]
+                task_index = task_indices[index]
+                tasks[task_index].service_state = ServiceState.ASSIGNED
+            valid_actors.append(actors[actor_index])
+            valid_tours.append(tours[actor_index])
+
+    return valid_actors, valid_tours
+
+
+def tasks_waiting(tasks):
+    tasks_waiting = 0
+
+    for task in tasks:
+        if task.is_pending():
+            tasks_waiting += 1
+
+    return tasks_waiting
+
+
+def actors_idle(actors):
+    idle_actors = 0
+
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors += 1
+
+    return idle_actors
+
+
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False, gamma=0):
     """tsp policy
 
     Args:
@@ -136,11 +192,13 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         tasks (_type_): the tasks arrived
     """
 
-    if not new_task_added:
-        return False
-
     distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)
+    total = len(task_indices) - len(actors)
+
+    if not (new_task_added or (tasks_waiting(tasks=tasks) and actors_idle(actors=actors))):
+        # nothing to do
+        return
 
     best_tours = random_task_assignment(tours, len(task_indices))
 
@@ -180,5 +238,8 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
     if not iteration_limit:
         print("WARNING: Time expired while searching")
 
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    # check the tours and remove any that are over the threshold
+    actors, tours = validate_tours(actors, tasks, best_tours, task_indices, gamma=gamma)
+
+    assign_tours_to_actors(actors, tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False

@@ -136,11 +136,23 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         tasks (_type_): the tasks arrived
     """
 
-    if not new_task_added:
-        return False
+    idle_actors = []
+    for actor in actors:
+        if not actor.is_busy():
+            idle_actors.append(actor)
 
-    distance_matrix, task_indices = get_distance_matrix(actors, tasks)
-    tours = initialize_tours(actors)
+    if not len(idle_actors):
+        return True
+
+    # TODO: with multiple agents, we need to make sure that we aren't reassigning tasks that
+    #       have already been sent to an agent for handling -- probably need a new
+    #       TASK_ASSIGNED state to be created
+    distance_matrix, task_indices = get_distance_matrix(idle_actors, tasks)
+    tours = initialize_tours(idle_actors)
+    total = len(task_indices) - len(idle_actors)
+    if total <= 0:
+        # nothing to do
+        return
 
     best_tours = random_task_assignment(tours, len(task_indices))
 
@@ -180,5 +192,5 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
     if not iteration_limit:
         print("WARNING: Time expired while searching")
 
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    assign_tours_to_actors(idle_actors, tasks, best_tours, task_indices, eta=eta, eta_first=eta_first)
     return False

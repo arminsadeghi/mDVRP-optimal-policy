@@ -36,13 +36,23 @@ def simulate(args):
 
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
+    generator_args['max_tasks'] = args.max_tasks
+    generator_args['max_time'] = args.max_time
+    generator_args['service_time'] = args.service_time
 
     sim = Simulation(
         policy_name=args.policy,
         generator_name=args.generator,
+        policy_args={
+            'cost_exponent': args.cost_exponent,
+            'eta': args.eta,
+            'eta_first': args.eta_first,
+            'gamma': args.gamma,
+        },
         generator_args=generator_args,
         num_actors=args.actors,
         pois_lambda=args.lambd,
+        service_time=args.service_time,
         screen=screen,
         show_sim=args.show_sim,
         max_tasks=args.max_tasks,
@@ -90,35 +100,62 @@ def multiple_sims(args):
     if not path.isdir(RESULTS_DIR):
         mkdir(RESULTS_DIR)
 
-    results_file_name = path.join(RESULTS_DIR, "res_" + args.policy + ".txt")
+    # Note that neither batch_tsp, nor tsp use the exponent value for anything -- they
+    # just need to run once... giving them unique negative values in case we want to graph
+    # them
+
+    if len(args.prefix) != 0 and args.prefix[-1] != '_':
+        args.prefix = args.prefix + '_'
+
+    results_file_name = path.join(RESULTS_DIR, args.prefix + args.policy + '_' + str(args.cost_exponent) +
+                                  '_' + str(args.eta) + '_' + str(args.service_time) + ".csv")
     if not path.exists(results_file_name):
         f = open(results_file_name, 'w')
-        f.write('policy,lambda,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist\n')
+        f.write('policy,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
     else:
         f = open(results_file_name, 'a')
 
-    for seed in [2, 6, 42, 52, 97, 35, 81, 1932, 493, 89234657]:
-        args.seed = seed
+    for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95]:  # []:
 
-        new_task_list = True
-        for lam in [0.05, 0.1, 0.2, 0.3, 0.4,  0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:  # []:
+        for seed in [21, 6983, 42, 520, 97, 29348, 935567]:
+            args.seed = seed
             print("================= LAMBDA: {:.2f} =================".format(lam))
             args.lambd = lam
             sim = simulate(args)
             policy = args.policy.replace('_', ' ')
             f.write(
-                str(policy) + "," + str(lam) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+                str(policy) + "," + str(lam) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
                 str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
                 str(sim._total_travel_distance) + "," +
                 str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
-                str(sim._max_travel_distance) + "\n"
+                str(sim._max_travel_distance) + "," + str(sim._max_queue_length) + "\n"
             )
+            f.flush()
+
+            if args.actor_stats:
+                actor_stats_file = path.join(RESULTS_DIR, args.prefix + 'actor_' + args.policy + '_' +
+                                             str(args.cost_exponent) + '_' + str(args.service_time) + ".csv")
+                if not path.exists(actor_stats_file):
+                    with open(actor_stats_file, 'w') as fp:
+                        fp.write('cost-exponent,actor,time,changes,max-changes,path-len\n')
+
+                with open(actor_stats_file, 'a') as fp:
+                    for actor in range(len(sim.actor_list)):
+                        for (time, changes, max_changes, length) in sim.actor_list[actor].history:
+                            fp.write(str(args.cost_exponent) + ',' + str(actor) + ',' + str(time) + ',' +
+                                     str(changes) + ',' + str(max_changes) + ',' + str(length) + "\n")
+                    fp.flush()
+
     f.close()
 
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description=__doc__)
+    argparser.add_argument(
+        '--actor-stats',
+        action='store_true',
+        help="Record the actor's queue history for the entire test")
     argparser.add_argument(
         '--height',
         default=SCREEN_HEIGHT,
@@ -145,6 +182,21 @@ if __name__ == "__main__":
         type=float,
         help='Exponential Spawn rate for Tasks')
     argparser.add_argument(
+        '--eta',
+        default=DEFAULT_POLICY_ETA,
+        type=float,
+        help='Proportion of policy to execute (batch) (0,1]')
+    argparser.add_argument(
+        '--gamma',
+        default=DEFAULT_POLICY_GAMMA,
+        type=float,
+        help='Insertion threshold [0,1)')
+    argparser.add_argument(
+        '-c', '--cost-exponent',
+        default=DEFAULT_POLICY_COST_EXPONENT,
+        type=float,
+        help='Power of Cost Function for Min Wait')
+    argparser.add_argument(
         '-a', '--actors',
         default=NUM_ACTORS,
         type=int,
@@ -153,6 +205,10 @@ if __name__ == "__main__":
         '-p', '--policy',
         default=DEFAULT_POLICY_NAME,
         help='Policy to use')
+    argparser.add_argument(
+        '--prefix',
+        default="",
+        help='Prefix on results file name')
     argparser.add_argument(
         '-g', '--generator',
         default=DEFAULT_GENERATOR_NAME,
@@ -191,6 +247,10 @@ if __name__ == "__main__":
         action='store_true',
         help='Display the simulation window')
     argparser.add_argument(
+        '--eta-first',
+        action='store_true', default=False,
+        help='Force the eta-segment to start at 1')
+    argparser.add_argument(
         '--multipass',
         action='store_true',
         help='Run the simulation over multiple lambda and seeds')
@@ -198,9 +258,7 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     if args.multipass:
-        for policy in ['batch_tsp', 'tsp', 'mod_tsp', 'quad_wait_tsp']:
-            args.policy = policy
-            multiple_sims(args)
+        multiple_sims(args)
 
     else:
         simulate(args)

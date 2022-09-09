@@ -7,6 +7,11 @@ from random import randint, shuffle, random
 from time import time
 from numpy import inf
 
+# define weights for average wait time and max wait time
+# TODO: Make these weights parameters when this is all converted to a class
+w_avg = 0.8
+w_max = 0.2
+
 
 def initialize_tours(actors):
     tours = {}
@@ -44,15 +49,21 @@ def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_
     for _i in range(len(tour) - 1):
         cost_to_vertex.append(cost_to_vertex[_i] + distance_matrix[(tour[_i], tour[_i + 1])] + service_time)
 
-    if cost_exponent:
-        cost = 0
-        for _i in range(len(tour)):
-            wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
-            cost += wait_time ** cost_exponent
-    else:
-        cost = cost_to_vertex[-1]
+    cost = 0
+    wait_times = []
+    for _i in range(len(tour)):
+        wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
+        cost += wait_time
+        wait_times.append(wait_time)
 
-    return cost
+    # this needs to be calculated as a true average instead of just the sum so the max wait and average wait
+    # are in the same scale range.
+    try:
+        cost = cost / (len(tour) - 1)
+    except ZeroDivisionError:
+        cost = 0  # only the agent in the list
+
+    return w_avg * cost + w_max * max(wait_times)
 
 
 def random_deletion(tours, p=1):
@@ -128,7 +139,7 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False,  gamma=0):
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
     """tsp policy
 
     Args:
