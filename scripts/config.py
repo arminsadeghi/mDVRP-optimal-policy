@@ -25,6 +25,8 @@ GENERATOR_ARGS = {
 SHOW_SIM = False
 
 DEFAULT_POLICY_COST_EXPONENT = 2
+DEFAULT_POLICY_ETA = 1            # proportion of the batch tsp path to execute (0,1]
+DEFAULT_POLICY_GAMMA = 0.9        # batch insertion threshold -- insertion after this point are rejected until next replan [0,1)
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000
