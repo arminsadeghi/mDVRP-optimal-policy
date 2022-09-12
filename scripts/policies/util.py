@@ -41,13 +41,27 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=
 
         tour_len = len(tours[actor_index]) - 1
         tour_start = 1
+        tour_end = tour_start + tour_len
+        tour_step = 1
+
         if eta < 1:
             tour_len = min(tour_len, max(1, int(tour_len * eta)))
             if not eta_first:
                 tour_start = randint(1, len(tours[actor_index]) - tour_len)
+            tour_end = tour_start + tour_len
+
+            start_task = tasks[task_indices[tours[actor_index][tour_start]]]
+            end_task = tasks[task_indices[tours[actor_index][tour_end-1]]]
+            if actors[actor_index].distance_to(start_task.location) > actors[actor_index].distance_to(end_task.location):
+                tmp = tour_start
+                tour_start = tour_end - 1
+                tour_end = tmp - 1
+                tour_step = -1
+                print(f"reversing tour: {tour_start} -> {tour_end} -- {tour_start - tour_end} tasks")
+
             print(f"assigning a tour of {tour_len} stops starting at {tour_start}/{len(tours[actor_index])}")
 
-        for _i in range(tour_start, tour_start+tour_len):
+        for _i in range(tour_start, tour_end, tour_step):
             index = tours[actor_index][_i]
             task_index = task_indices[index]
             actors[actor_index].path.append(tasks[task_index])

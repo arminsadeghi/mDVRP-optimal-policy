@@ -24,6 +24,11 @@ class Actor:
         self.history = []
         self.history.append((0, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
 
+    def distance_to(self, pos):
+        dx = self.pos[0] - pos[0]
+        dy = self.pos[1] - pos[1]
+        return sqrt(dx*dx + dy*dy)
+
     def _move(self, sim_time):
         """move towards the goal
         """
