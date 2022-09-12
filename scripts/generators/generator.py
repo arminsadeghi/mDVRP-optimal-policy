@@ -27,9 +27,13 @@ class Generator:
         except KeyError:
             self.max_time = None
         try:
-            self.max_tasks = kwargs['max_tasks']
+            self.initial_tasks = kwargs['initial_tasks']
         except KeyError:
-            self.max_tasks = 10
+            self.initial_tasks = 0
+        try:
+            self.total_tasks = kwargs['total_tasks']
+        except KeyError:
+            self.total_tasks = 1000
         try:
             self.service_time = kwargs['service_time']
         except KeyError:
@@ -52,6 +56,17 @@ class Generator:
         first_time = random.expovariate(lam)
         tasks = []
 
+        # insert the initial tasks, available at the start of the sim
+        for _ in range(self.initial_tasks):
+            new_task = Task(
+                id=len(tasks),
+                location=self.draw(),
+                time=0,
+                # TODO: Fixing service time variance proportional to specified time
+                service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
+            )
+            tasks.append(new_task)
+
         sim_time = first_time
         while True:
             next_time = random.expovariate(lam)
@@ -69,7 +84,7 @@ class Generator:
                 if sim_time > self.max_time:
                     break
             else:
-                if len(tasks) >= self.max_tasks:
+                if len(tasks) >= self.total_tasks:
                     break
 
         return tasks, first_time
