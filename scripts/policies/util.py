@@ -1,6 +1,7 @@
 from math import sqrt
 from Task import Task, ServiceState
 from random import randint
+import numpy as np
 
 
 def euc_distance(task1, task2):
@@ -23,12 +24,12 @@ def get_distance_matrix(actors, tasks):
             task_locations.append(task.location)
             task_indices.append(task.id)
 
-    distance_matrix = {}
+    distance_matrix = np.zeros([len(task_locations), len(task_locations)])
     for _i in range(len(task_locations)):
         for _j in range(_i, len(task_locations)):
             dist = euc_distance(task_locations[_i], task_locations[_j])
-            distance_matrix[(_i, _j)] = dist
-            distance_matrix[(_j, _i)] = dist
+            distance_matrix[_i, _j] = dist
+            distance_matrix[_j, _i] = dist
 
     return distance_matrix, task_indices
 
