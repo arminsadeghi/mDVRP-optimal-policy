@@ -34,11 +34,15 @@ def simulate(args):
     else:
         seed(time())
 
+    if args.total_tasks < args.max_tasks:
+        args.total_tasks = args.max_tasks
+
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
-    generator_args['max_tasks'] = args.max_tasks
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
+    generator_args['initial_tasks'] = args.initial_tasks
+    generator_args['total_tasks'] = args.total_tasks
 
     sim = Simulation(
         policy_name=args.policy,
@@ -54,16 +58,23 @@ def simulate(args):
         pois_lambda=args.lambd,
         service_time=args.service_time,
         screen=screen,
-        show_sim=args.show_sim,
         max_tasks=args.max_tasks,
-        max_time=args.max_time
+        max_time=args.max_time,
+        show_sim=args.show_sim,
     )
 
     if args.seed is not None:
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + '_' + str(args.lambd) + '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
+        if args.initial_tasks:
+            tasks_str = '_' + str(args.initial_tasks) + 'i'
+        else:
+            tasks_str = ''
+
+        # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
+        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
+                                '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
         try:
             with open(pickle_file, 'rb') as fp:
                 task_list = load(fp)
@@ -115,7 +126,8 @@ def multiple_sims(args):
     else:
         f = open(results_file_name, 'a')
 
-    for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95]:  # []:
+    # for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95]:  # []:
+    for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.97, 0.99, 1.0]:  # []:
 
         for seed in [21, 6983, 42, 520, 97, 29348, 935567]:
             args.seed = seed
@@ -214,6 +226,11 @@ if __name__ == "__main__":
         default=DEFAULT_GENERATOR_NAME,
         help='Random Generator to use')
     argparser.add_argument(
+        '--initial-tasks',
+        default=0,
+        type=int,
+        help='Pending tasks at the start of the simulation (t=0)')
+    argparser.add_argument(
         '--load-tasks',
         action='store_true',
         help='Load the most recent list of tasks')
@@ -242,6 +259,11 @@ if __name__ == "__main__":
         default=MAX_SERVICED_TASKS,
         type=int,
         help='Maximum number of Tasks to service')
+    argparser.add_argument(
+        '--total-tasks',
+        default=MAX_SERVICED_TASKS,
+        type=int,
+        help='Total number of tasks to create (>=max_tasks)')
     argparser.add_argument(
         '--show-sim',
         action='store_true',
