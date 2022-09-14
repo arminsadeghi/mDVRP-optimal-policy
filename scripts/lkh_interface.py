@@ -39,7 +39,9 @@ def solve_tsp(name, comment, start_pos, tasks, scale_factor=1.0):
 def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_time=0, scale_factor=1.0):
 
     N = 1
-    node_coord_str = 'NODE_COORD_SECTION:\n' + str(N) + ' ' + str(int(start_pos[0] * scale_factor)) + ' ' + str(int(start_pos[1] * scale_factor)) + '\n'
+    position_scale = scale_factor # * 100
+    node_coord_str = 'NODE_COORD_SECTION:\n' + \
+        str(N) + ' ' + str(int(start_pos[0] * position_scale)) + ' ' + str(int(start_pos[1] * position_scale)) + '\n'
     service_time_str = 'SERVICE_TIME_SECTION:\n' + str(N) + ' 0\n'
     # repurposing demand to account for built-up wait
     demand_str = 'DEMAND_SECTION: \n' + str(N) + ' 0\n'
@@ -47,7 +49,7 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
     for task in tasks:
         if task.is_pending():
             N += 1
-            node_coord_str += str(N) + ' ' + str(int(task.location[0] * scale_factor)) + ' ' + str(int(task.location[1] * scale_factor)) + '\n'
+            node_coord_str += str(N) + ' ' + str(int(task.location[0] * position_scale)) + ' ' + str(int(task.location[1] * position_scale)) + '\n'
             service_time_str += str(N) + ' ' + str(mean_service_time * scale_factor) + '\n'
             demand_str += str(N) + ' ' + str(int((simulation_time - task.time) * scale_factor)) + '\n'
 
@@ -61,7 +63,7 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
     tsp_str += 'DIMENSION: ' + str(N) + '\n'
     tsp_str += 'EDGE_WEIGHT_TYPE: EUC_2D\n'
     tsp_str += node_coord_str
-    tsp_str += service_time_str
+#    tsp_str += service_time_str
     tsp_str += demand_str
     tsp_str += 'DEPOT_SECTION:\n'
     tsp_str += '1\n'
@@ -69,6 +71,6 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
     tsp_str += 'EOF\n'
 
     problem = lkh.LKHProblem.parse(tsp_str)
-    path = lkh.solve(solver=solver_path, problem=problem, max_trials=1000, runs=5)
+    path = lkh.solve(solver=solver_path, problem=problem, max_trials=2000, runs=5)
 
     return path
