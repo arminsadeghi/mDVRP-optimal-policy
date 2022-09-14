@@ -23,7 +23,6 @@ GainType Penalty_TRP() {
       if (N->Id <= Dim || N->DepotId) {
         if (NextN->DepotId == 0) {
           DistanceSum += (C(N, NextN) - N->Pi - NextN->Pi) / Precision;
-
           double service_time = 0;
           int existing_wait = 0;
           if (NextN->Id <= Dim) {
@@ -34,8 +33,8 @@ GainType Penalty_TRP() {
             service_time = NextN->FixedTo1->ServiceTime;
             existing_wait = NextN->FixedTo1->Demand;
           }
-          DistanceSum += service_time;
-          P += pow(DistanceSum + existing_wait, 1.5);
+          DistanceSum += service_time / Precision;
+          P += pow(DistanceSum + existing_wait / Precision, 1.5);
 
           if (P > CurrentPenalty || (P == CurrentPenalty && CurrentGain <= 0)) {
             StartRoute = CurrentRoute;

@@ -48,7 +48,7 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
         if task.is_pending():
             N += 1
             node_coord_str += str(N) + ' ' + str(int(task.location[0] * scale_factor)) + ' ' + str(int(task.location[1] * scale_factor)) + '\n'
-            service_time_str += str(N) + ' ' + str(mean_service_time) + '\n'
+            service_time_str += str(N) + ' ' + str(mean_service_time * scale_factor) + '\n'
             demand_str += str(N) + ' ' + str(int((simulation_time - task.time) * scale_factor)) + '\n'
 
     if N < 3:
