@@ -8,6 +8,7 @@ ACTOR_SPEED = 1
 LAMBDA = 0.8
 SERVICE_TIME = 0
 TICK_TIME = 0.01
+BETA = 0.712    # constant for TSP length
 
 DEFAULT_POLICY_NAME = "random_assgn"
 DEFAULT_GENERATOR_NAME = "uniform"

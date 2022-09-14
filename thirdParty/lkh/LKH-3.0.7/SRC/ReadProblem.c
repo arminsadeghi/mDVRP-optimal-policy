@@ -1995,9 +1995,7 @@ static void Read_SERVICE_TIME_SECTION() {
     if (Id <= 0 || Id > Dim)
       eprintf("SERVICE_TIME_SECTION: Node number out of range: %d", Id);
     N = &NodeSet[Id];
-    double service_time;
-    if (!fscanf(ProblemFile, "%lf", &service_time)) {
-      service_time = 0;
+    if (!fscanf(ProblemFile, "%lf", &N->ServiceTime)) {
       eprintf("SERVICE_TIME_SECTION: Missing service time for node %d", Id);
     }
   }
