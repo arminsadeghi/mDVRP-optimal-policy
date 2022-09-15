@@ -12,7 +12,7 @@ from pickle import load, dump
 from math import floor
 
 
-def simulate(args):
+def simulate(args, delivery_log=None):
 
     if args.show_sim:
         pygame.init()
@@ -61,13 +61,14 @@ def simulate(args):
         max_tasks=args.max_tasks,
         max_time=args.max_time,
         show_sim=args.show_sim,
+        delivery_log=delivery_log
     )
 
     if args.seed is not None:
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
-        tasks_str = '_' + str(args.initial_tasks) + 'i'
+        tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
 
         # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
         pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
@@ -122,13 +123,18 @@ def multiple_sims(args):
         seeds = [args.seed, ]
         seed_str = '_' + str(args.seed) + 's'
 
-    results_file_name = path.join(RESULTS_DIR, args.prefix + args.policy + '_' + str(args.cost_exponent) +
-                                  'p_' + str(args.eta) + 'e_' + str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv")
-    if not path.exists(results_file_name):
-        f = open(results_file_name, 'w')
-        f.write('policy,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
-    else:
-        f = open(results_file_name, 'a')
+    results_str = args.prefix + args.policy + '_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
+        str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv"
+    results_file_name = path.join(RESULTS_DIR, results_str)
+    f = open(results_file_name, 'w')
+    f.write('policy,seed,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    f.flush
+
+    delivery_log_str = 'DeliveryLog_ ' + results_str
+    delivery_log_name = path.join(RESULTS_DIR, delivery_log_str)
+    delivery_log = open(delivery_log_name, 'w')
+    delivery_log.write('id,px,py,t_arrive,t_service\n')
+    delivery_log.flush()
 
     # estimate the pending queue (overwrite whatever is passed in)
     if args.service_time:
@@ -139,10 +145,10 @@ def multiple_sims(args):
     for seed in seeds:
         args.seed = seed
         print(f"================= LAMBDA: {args.lambd}, SEED: {seed} =================")
-        sim = simulate(args)
+        sim = simulate(args, delivery_log)
         policy = args.policy.replace('_', ' ')
         f.write(
-            str(policy) + "," + str(args.lambd) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
             str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
             str(sim._total_travel_distance) + "," +
             str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
@@ -164,6 +170,7 @@ def multiple_sims(args):
                                  str(changes) + ',' + str(max_changes) + ',' + str(length) + "\n")
                 fp.flush()
 
+    delivery_log.close()
     f.close()
 
 

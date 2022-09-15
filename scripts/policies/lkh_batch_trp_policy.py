@@ -15,7 +15,7 @@ from policies.util import get_distance_matrix
 fname = 'trp_costs.csv'
 if not path.exists(fname):
     with open(fname, 'w') as fp:
-        fp.write('lkh-cost,2opt-cost,length\n')
+        fp.write('lkh-cost,2opt-cost,length,same-first-step\n')
 
 
 def prep_tour(tasks):
@@ -65,7 +65,6 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
 
     if check_tour:
         chk_distance_matrix, _ = get_distance_matrix(idle_actors, pending_tasks)
-        # chk_task_indices = task_indices[1:]
         chk_distance_matrix = pad(chk_distance_matrix, 1)
 
         lkh_cost = tour_cost(
@@ -86,10 +85,12 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
             cost_exponent=1.5,
             max_solver_time=max_solver_time
         )
-        print(f"Expected LKH Cost: {lkh_cost} -- Our Cost: {our_cost}")
+        first_lkh_id = pending_tasks[task_indices[tours[0][1]]]
+        first_our_id = tasks[our_task_indices[our_tours[0][1]]]
+        print(f"Expected LKH Cost: {lkh_cost} -- Our Cost: {our_cost} -- Same First: {first_lkh_id == first_our_id}")
 
         with open(fname, "a") as fp:
-            fp.write(f'{lkh_cost},{our_cost},{len(tours[0])}')
+            fp.write(f'{lkh_cost},{our_cost},{len(tours[0])}\n')
 
     assign_tours_to_actors(idle_actors, pending_tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False

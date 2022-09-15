@@ -15,7 +15,7 @@ from math import sqrt
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True):
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True, delivery_log=None):
         self.num_actors = num_actors
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
@@ -31,6 +31,8 @@ class Simulation:
         self._env_size = screen_width - self._margin
         self.max_time = max_time
         self.max_tasks = max_tasks
+
+        self.delivery_log = delivery_log
 
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
@@ -294,6 +296,11 @@ class Simulation:
         self._avg_served_time += time
         if time > self._max_served_time:
             self._max_served_time = time
+
+        # track update
+        if self.delivery_log is not None:
+            self.delivery_log.write(self.task_list[rval.id].to_string()+'\n')
+            self.delivery_log.flush()
 
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
