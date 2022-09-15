@@ -67,10 +67,7 @@ def simulate(args):
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
-        if args.initial_tasks:
-            tasks_str = '_' + str(args.initial_tasks) + 'i'
-        else:
-            tasks_str = ''
+        tasks_str = '_' + str(args.initial_tasks) + 'i'
 
         # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
         pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
