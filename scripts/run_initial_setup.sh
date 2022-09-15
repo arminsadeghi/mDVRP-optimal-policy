@@ -3,10 +3,9 @@
 # Run this script first to generate data for the other simulations -- also runs the
 # baseline full batch tsp
 #
-etas=("0.2" "0.5")
-lambs=("0.3" "0.4" "0.5" "0.6" "0.7" "0.8")
-tasks=2000
-total_tasks=2500
+lambs=("0.3" "0.4" "0.5" "0.6" "0.7" "0.8" "0.9")
+tasks=3000
+total_tasks=3500
 
 prefix_str=""
 if [[ $1 ]]
