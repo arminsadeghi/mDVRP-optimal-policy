@@ -23,9 +23,7 @@ while (( "$#" )); do
         done
     done
     echo working on $l
-    python main.py --multipass --cost-exponent=1.5 --eta=0.2  --max-tasks=$tasks --total-tasks=$total_tasks --lambd=$l --seed=21 --policy=$policy $prefix_str --service-time 1 --generator uniform > /dev/null 2>&1
-    echo     ...still going...
-    python main.py --multipass --cost-exponent=1.5 --eta=0.5  --max-tasks=$tasks --total-tasks=$total_tasks --lambd=$l --seed=21 --policy=$policy $prefix_str --service-time 1 --generator uniform > /dev/null 2>&1
+    python main.py --multipass --cost-exponent=1.5 --eta=1.0 --max-tasks=$tasks --total-tasks=$total_tasks --lambd=$l --seed=21 --policy=$policy $prefix_str --service-time 1 --generator uniform > /dev/null 2>&1
     echo done
     shift
 done
