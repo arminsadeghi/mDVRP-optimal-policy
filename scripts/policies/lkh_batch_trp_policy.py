@@ -7,9 +7,15 @@ from random import randint, shuffle
 from time import time
 from numpy import inf, pad
 from lkh_interface import solve_trp
+from os import path
 
 from policies.quad_wait_tsp_policy import policy as our_policy, tour_cost, plan_tours
 from policies.util import get_distance_matrix
+
+fname = 'trp_costs.csv'
+if not path.exists(fname):
+    with open(fname, 'w') as fp:
+        fp.write('lkh-cost,2opt-cost,length\n')
 
 
 def prep_tour(tasks):
@@ -82,7 +88,8 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         )
         print(f"Expected LKH Cost: {lkh_cost} -- Our Cost: {our_cost}")
 
-        # with open("tsp_check")
+        with open(fname, "a") as fp:
+            fp.write(f'{lkh_cost},{our_cost},{len(tours[0])}')
 
     assign_tours_to_actors(idle_actors, pending_tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False
