@@ -84,5 +84,5 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
 
         # with open("tsp_check")
 
-    assign_tours_to_actors(idle_actors, tasks, tours, task_indices, eta=eta, eta_first=eta_first)
+    assign_tours_to_actors(idle_actors, pending_tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False
