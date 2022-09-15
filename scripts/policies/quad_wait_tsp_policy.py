@@ -46,7 +46,7 @@ def tour_cost(tour, distance_matrix, tasks, task_indices, current_time, service_
 
     if cost_exponent:
         cost = 0
-        for _i in range(len(tour)):
+        for _i in range(1, len(tour)):
             wait_time = cost_to_vertex[_i] - tasks[task_indices[tour[_i]]].time + current_time
             cost += wait_time ** cost_exponent
     else:
@@ -128,17 +128,7 @@ def total_tour_cost(tours, distance_matrix, tasks, task_indices, current_time, s
     return total_cost
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False,  gamma=0):
-    """tsp policy
-
-    Args:
-        actors (_type_): actors in the environment
-        tasks (_type_): the tasks arrived
-    """
-
-    if not new_task_added:
-        return False
-
+def plan_tours(actors, tasks, current_time, service_time, cost_exponent, max_solver_time):
     distance_matrix, task_indices = get_distance_matrix(actors, tasks)
     tours = initialize_tours(actors)
 
@@ -180,5 +170,22 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
     if not iteration_limit:
         print("WARNING: Time expired while searching")
 
-    assign_tours_to_actors(actors, tasks, best_tours, task_indices)
+    return(best_tours, task_indices, best_cost)
+
+
+def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=2, eta=1, eta_first=False,  gamma=0):
+    """tsp policy
+
+    Args:
+        actors (_type_): actors in the environment
+        tasks (_type_): the tasks arrived
+    """
+
+    if not new_task_added:
+        return False
+
+    tours, task_indices, cost = plan_tours(actors=actors, tasks=tasks, current_time=current_time, service_time=service_time,
+                                           cost_exponent=cost_exponent, max_solver_time=max_solver_time)
+
+    assign_tours_to_actors(actors, tasks, tours, task_indices)
     return False
