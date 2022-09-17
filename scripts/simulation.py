@@ -11,11 +11,13 @@ import pygame
 from importlib import import_module
 from math import sqrt
 
+from centroid import Field, Sector
+
 
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True, delivery_log=None):
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, show_sim=True, sectors=1, delivery_log=None):
         self.num_actors = num_actors
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
@@ -33,6 +35,13 @@ class Simulation:
         self.max_tasks = max_tasks
 
         self.delivery_log = delivery_log
+
+        # split the environment...
+        self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
+        self.centre = [0.5, 0.5]
+        self.sectors = sectors
+        self.field = Field(self.vertices, self.centre, self.sectors)
+        self.current_sector = self.field.next_sector()
 
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
@@ -302,6 +311,10 @@ class Simulation:
             self.delivery_log.write(self.task_list[rval.id].to_string()+'\n')
             self.delivery_log.flush()
 
+        # if the actor is now idle, move to the next sector
+        if not self.actor_list[0].is_busy():
+            self.current_sector = self.field.next_sector()
+
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
         """
@@ -319,17 +332,37 @@ class Simulation:
             if len(self.serviced_tasks) >= max_tasks:
                 return -1
 
-        new_task_added = False
-        while self.next_task < len(self.task_list) and self.sim_time >= self.task_list[self.next_task].time:
-            if self.next_task > len(self.task_list) - 1:
-                break
-            print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
-            self.next_task += 1
-            new_task_added = True
+        # if the actor is idle
+        if not self.actor_list[0].is_busy():
 
-        self._policy(actors=self.actor_list, tasks=self.task_list[:self.next_task], new_task_added=new_task_added,
-                     current_time=self.sim_time, service_time=self.service_time,
-                     cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
+            # check if we need to update the actor's target
+            if self.current_sector.is_near_centre(self.actor_list[0].pos):
+                self.current_sector = self.field.next_sector()
+
+            sector_tasks = []
+            # go through the task list and assign tasks (this is going to be the slow way...)
+            for _ in range(self.sectors):
+                for task in self.task_list:
+                    if self.sim_time < task.time:
+                        break
+
+                    if task.is_pending():
+                        if self.current_sector.is_mine(task.location):
+                            sector_tasks.append(task)
+
+                if len(sector_tasks):
+                    print("[{:.2f}]: Currently {} tasks pending for sector {}".format(round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
+                    break
+
+                # nothing in this sector, check the next
+                self.current_sector = self.field.next_sector()
+
+            if len(sector_tasks):
+                self._policy(actors=self.actor_list, tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
+                             cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
+            else:
+                target = self.centre  # self.current_sector.get_centroid()
+                self.actor_list[0].path = [Task(-1, target, -1)]
 
         if self._show_sim:
             #  draw the limits of the environment
