@@ -24,8 +24,11 @@ class Task:
             return True
         return False
 
+    def to_string(self):
+        return f'{self.id},{self.location[0]},{self.location[1]},{self.time},{self.time_serviced}'
+
     def wait_time(self):
         if self.time_serviced == -1:
-            raise DataError("Task service not complete!")
+            raise ValueError("Task service not complete!")
 
         return self.time_serviced - self.time
