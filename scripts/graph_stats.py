@@ -107,9 +107,13 @@ def parse_state_data(files, prefix, eta, p):
                     print(df_n.shape)
                     print(df_n.iloc[1:5])
 
-                    df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
-                    df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
-                    # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+                    try:
+                        df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
+                        df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
+                        # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+                    except ValueError as e:
+                        df.loc[row_mask, 'avg-ratio'] = np.nan
+                        df.loc[row_mask, 'max-ratio'] = np.nan
 
                     if ce < 0:
                         ce_str = ""
