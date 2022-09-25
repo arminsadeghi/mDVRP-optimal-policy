@@ -67,8 +67,11 @@ def parse_state_data(files, prefix, eta, p):
     # ]
 
     df = df.loc[
-        (df['lambda'] >= 0.3) * (df['lambda'] <= 0.95)
+        (df['lambda'] >= 0.3) * (df['lambda'] <= 0.7)
     ]
+    # df = df.loc[
+    #     (df['lambda'] != 0.85)
+    # ]
 
     ces = set(df['cost-exponent'])
     # ces.remove(-2.0)
@@ -76,12 +79,18 @@ def parse_state_data(files, prefix, eta, p):
     policies = set(df['policy'])
     efs = [True, False]
 
+    df['avg-ratio'] = 0
+    df['max-ratio'] = 0
+    df['display-name'] = np.nan
+
+    df.sort_values(['policy', 'lambda', 'seed'], inplace=True)
+
+    df_d = df.loc[(df['cost-exponent'] == -2.0) * (df['eta'] == 1) * (df['policy'] == 'lkh batch tsp') * (df['eta-first'] == False)]
     for policy in policies:
         for ef in efs:
             for ce in ces:
                 for eta in etas:
                     row_mask = (df['cost-exponent'] == ce) * (df['eta'] == eta) * (df['policy'] == policy) * (df['eta-first'] == ef)
-                    df_d = df.loc[(df['cost-exponent'] == -2.0) * (df['eta'] == 1) * (df['policy'] == 'lkh batch tsp') * (df['eta-first'] == False)]
                     df_n = df.loc[row_mask]
                     if not len(df_n):
                         continue
@@ -98,9 +107,13 @@ def parse_state_data(files, prefix, eta, p):
                     print(df_n.shape)
                     print(df_n.iloc[1:5])
 
-                    df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
-                    df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
-                    # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+                    try:
+                        df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
+                        df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
+                        # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+                    except ValueError as e:
+                        df.loc[row_mask, 'avg-ratio'] = np.nan
+                        df.loc[row_mask, 'max-ratio'] = np.nan
 
                     if ce < 0:
                         ce_str = ""

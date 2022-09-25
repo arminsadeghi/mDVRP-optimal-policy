@@ -16,10 +16,17 @@ def simulate(args, delivery_log=None):
 
     if args.show_sim:
         pygame.init()
-        screen = pygame.display.set_mode((args.height, args.width))
+        size = (args.width, args.height)
+        screen = pygame.display.set_mode(size)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.display.set_caption('Simulation')
 
         clock = pygame.time.Clock()
+        pygame.font.init()
+    elif args.record_data:
+        # pygame.init()
+        size = (args.width, args.height)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.font.init()
     else:
         screen = None
@@ -36,6 +43,12 @@ def simulate(args, delivery_log=None):
 
     if args.total_tasks < args.max_tasks:
         args.total_tasks = args.max_tasks
+
+    # override initial tasks
+    if args.service_time:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+    else:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
@@ -57,10 +70,11 @@ def simulate(args, delivery_log=None):
         num_actors=args.actors,
         pois_lambda=args.lambd,
         service_time=args.service_time,
-        screen=screen,
+        screen=surface if args.show_sim or args.record_data else None,
         max_tasks=args.max_tasks,
         max_time=args.max_time,
-        show_sim=args.show_sim,
+        record_data=args.record_data,
+        sectors=args.sectors,
         delivery_log=delivery_log
     )
 
@@ -88,12 +102,12 @@ def simulate(args, delivery_log=None):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
-            screen.fill((0, 0, 0))
         rval = sim.tick(tick_time=args.tick_time, max_simulation_time=args.max_time, max_tasks=args.max_tasks)
         if rval == -1:
             break
 
         if args.show_sim:
+            screen.blit(surface, (0, 0))
             pygame.display.flip()
             pygame.display.update()
             clock.tick(1.0/args.tick_time*args.simulation_speed)
@@ -123,14 +137,14 @@ def multiple_sims(args):
         seeds = [args.seed, ]
         seed_str = '_' + str(args.seed) + 's'
 
-    results_str = args.prefix + args.policy + '_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
+    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
         str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv"
     results_file_name = path.join(RESULTS_DIR, results_str)
     f = open(results_file_name, 'w')
-    f.write('policy,seed,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    f.write('policy,seed,lambda,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
     f.flush
 
-    delivery_log_str = 'DeliveryLog_ ' + results_str
+    delivery_log_str = 'DeliveryLog_' + results_str
     delivery_log_name = path.join(RESULTS_DIR, delivery_log_str)
     delivery_log = open(delivery_log_name, 'w')
     delivery_log.write('id,px,py,t_arrive,t_service\n')
@@ -148,7 +162,7 @@ def multiple_sims(args):
         sim = simulate(args, delivery_log)
         policy = args.policy.replace('_', ' ')
         f.write(
-            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
             str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
             str(sim._total_travel_distance) + "," +
             str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
@@ -273,10 +287,19 @@ if __name__ == "__main__":
         type=int,
         help='Maximum number of Tasks to service')
     argparser.add_argument(
+        '--sectors',
+        default=1,
+        type=int,
+        help='Divide the environment into <N> sectors')
+    argparser.add_argument(
         '--total-tasks',
         default=MAX_SERVICED_TASKS,
         type=int,
         help='Total number of tasks to create (>=max_tasks)')
+    argparser.add_argument(
+        '--record-data',
+        action='store_true',
+        help='Record data to disk as frames')
     argparser.add_argument(
         '--show-sim',
         action='store_true',

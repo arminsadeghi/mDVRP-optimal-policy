@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, atan2
 from config import DISTANCE_TOLERANCE, TICK_TIME
 import pygame
 from Task import Task, ServiceState
@@ -9,6 +9,7 @@ class Actor:
         self.id = id
         self.pos = pos
         self.path = []
+        self.complete_path = []
         self.speed = speed
         self.reached_goal = False
         self.servicing = None
@@ -23,6 +24,7 @@ class Actor:
         self.max_changes_before_completion = 0
         self.history = []
         self.history.append((0, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
+        self.orientation = 0
 
     def distance_to(self, pos):
         dx = self.pos[0] - pos[0]
@@ -65,6 +67,10 @@ class Actor:
                 round(self.pos[1] + dir[1]*self.speed*1.0/dist*TICK_TIME, 5)
             ]
             self.travel_dist += self.speed * TICK_TIME
+
+            # moving -- update the orientation
+            self.orientation = atan2(dir[1], dir[0])
+
         else:
             # arrived at the goal
             self.pos = [
