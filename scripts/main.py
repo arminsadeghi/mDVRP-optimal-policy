@@ -7,19 +7,26 @@ import pygame
 
 from importlib import import_module
 from os import path, mkdir
-from time import time
+from time import time, sleep
 from pickle import load, dump
-from time import sleep
+from math import floor
 
 
-def simulate(args):
+def simulate(args, delivery_log=None):
 
     if args.show_sim:
         pygame.init()
-        screen = pygame.display.set_mode((args.height, args.width))
+        size = (args.width, args.height)
+        screen = pygame.display.set_mode(size)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.display.set_caption('Simulation')
 
         clock = pygame.time.Clock()
+        pygame.font.init()
+    elif args.record_data:
+        # pygame.init()
+        size = (args.width, args.height)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.font.init()
     else:
         screen = None
@@ -34,11 +41,21 @@ def simulate(args):
     else:
         seed(time())
 
+    if args.total_tasks < args.max_tasks:
+        args.total_tasks = args.max_tasks
+
+    # override initial tasks
+    if args.service_time:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+    else:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
-    generator_args['max_tasks'] = args.max_tasks
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
+    generator_args['initial_tasks'] = args.initial_tasks
+    generator_args['total_tasks'] = args.total_tasks
 
     sim = Simulation(
         policy_name=args.policy,
@@ -53,17 +70,23 @@ def simulate(args):
         num_actors=args.actors,
         pois_lambda=args.lambd,
         service_time=args.service_time,
-        screen=screen,
-        show_sim=args.show_sim,
+        screen=surface if args.show_sim or args.record_data else None,
         max_tasks=args.max_tasks,
-        max_time=args.max_time
+        max_time=args.max_time,
+        record_data=args.record_data,
+        sectors=args.sectors,
+        delivery_log=delivery_log
     )
 
     if args.seed is not None:
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + '_' + str(args.lambd) + '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
+        tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
+
+        # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
+        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
+                                '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
         try:
             with open(pickle_file, 'rb') as fp:
                 task_list = load(fp)
@@ -79,12 +102,12 @@ def simulate(args):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
-            screen.fill((0, 0, 0))
         rval = sim.tick(tick_time=args.tick_time, max_simulation_time=args.max_time, max_tasks=args.max_tasks)
         if rval == -1:
             break
 
         if args.show_sim:
+            screen.blit(surface, (0, 0))
             pygame.display.flip()
             pygame.display.update()
             clock.tick(1.0/args.tick_time*args.simulation_speed)
@@ -107,45 +130,61 @@ def multiple_sims(args):
     if len(args.prefix) != 0 and args.prefix[-1] != '_':
         args.prefix = args.prefix + '_'
 
-    results_file_name = path.join(RESULTS_DIR, args.prefix + args.policy + '_' + str(args.cost_exponent) +
-                                  '_' + str(args.eta) + '_' + str(args.service_time) + ".csv")
-    if not path.exists(results_file_name):
-        f = open(results_file_name, 'w')
-        f.write('policy,lambda,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    if args.seed is None:
+        seeds = [21, 6983, 42, 520, 97, 29348, 935567]
+        seed_str = ''
     else:
-        f = open(results_file_name, 'a')
+        seeds = [args.seed, ]
+        seed_str = '_' + str(args.seed) + 's'
 
-    for lam in [0.6, 0.7, 0.8, 0.85, 0.9, 0.95]:  # []:
+    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
+        str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv"
+    results_file_name = path.join(RESULTS_DIR, results_str)
+    f = open(results_file_name, 'w')
+    f.write('policy,seed,lambda,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    f.flush
 
-        for seed in [21, 6983, 42, 520, 97, 29348, 935567]:
-            args.seed = seed
-            print("================= LAMBDA: {:.2f} =================".format(lam))
-            args.lambd = lam
-            sim = simulate(args)
-            policy = args.policy.replace('_', ' ')
-            f.write(
-                str(policy) + "," + str(lam) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
-                str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
-                str(sim._total_travel_distance) + "," +
-                str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
-                str(sim._max_travel_distance) + "," + str(sim._max_queue_length) + "\n"
-            )
-            f.flush()
+    delivery_log_str = 'DeliveryLog_' + results_str
+    delivery_log_name = path.join(RESULTS_DIR, delivery_log_str)
+    delivery_log = open(delivery_log_name, 'w')
+    delivery_log.write('id,px,py,t_arrive,t_service\n')
+    delivery_log.flush()
 
-            if args.actor_stats:
-                actor_stats_file = path.join(RESULTS_DIR, args.prefix + 'actor_' + args.policy + '_' +
-                                             str(args.cost_exponent) + '_' + str(args.service_time) + ".csv")
-                if not path.exists(actor_stats_file):
-                    with open(actor_stats_file, 'w') as fp:
-                        fp.write('cost-exponent,actor,time,changes,max-changes,path-len\n')
+    # estimate the pending queue (overwrite whatever is passed in)
+    if args.service_time:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+    else:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
-                with open(actor_stats_file, 'a') as fp:
-                    for actor in range(len(sim.actor_list)):
-                        for (time, changes, max_changes, length) in sim.actor_list[actor].history:
-                            fp.write(str(args.cost_exponent) + ',' + str(actor) + ',' + str(time) + ',' +
-                                     str(changes) + ',' + str(max_changes) + ',' + str(length) + "\n")
-                    fp.flush()
+    for seed in seeds:
+        args.seed = seed
+        print(f"================= LAMBDA: {args.lambd}, SEED: {seed} =================")
+        sim = simulate(args, delivery_log)
+        policy = args.policy.replace('_', ' ')
+        f.write(
+            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+            str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
+            str(sim._total_travel_distance) + "," +
+            str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
+            str(sim._max_travel_distance) + "," + str(sim._max_queue_length) + "\n"
+        )
+        f.flush()
 
+        if args.actor_stats:
+            actor_stats_file = path.join(RESULTS_DIR, args.prefix + 'actor_' + args.policy + '_' +
+                                         str(args.cost_exponent) + '_' + str(args.service_time) + ".csv")
+            if not path.exists(actor_stats_file):
+                with open(actor_stats_file, 'w') as fp:
+                    fp.write('cost-exponent,actor,time,changes,max-changes,path-len\n')
+
+            with open(actor_stats_file, 'a') as fp:
+                for actor in range(len(sim.actor_list)):
+                    for (time, changes, max_changes, length) in sim.actor_list[actor].history:
+                        fp.write(str(args.cost_exponent) + ',' + str(actor) + ',' + str(time) + ',' +
+                                 str(changes) + ',' + str(max_changes) + ',' + str(length) + "\n")
+                fp.flush()
+
+    delivery_log.close()
     f.close()
 
 
@@ -214,6 +253,11 @@ if __name__ == "__main__":
         default=DEFAULT_GENERATOR_NAME,
         help='Random Generator to use')
     argparser.add_argument(
+        '--initial-tasks',
+        default=0,
+        type=int,
+        help='Pending tasks at the start of the simulation (t=0)')
+    argparser.add_argument(
         '--load-tasks',
         action='store_true',
         help='Load the most recent list of tasks')
@@ -242,6 +286,20 @@ if __name__ == "__main__":
         default=MAX_SERVICED_TASKS,
         type=int,
         help='Maximum number of Tasks to service')
+    argparser.add_argument(
+        '--sectors',
+        default=1,
+        type=int,
+        help='Divide the environment into <N> sectors')
+    argparser.add_argument(
+        '--total-tasks',
+        default=MAX_SERVICED_TASKS,
+        type=int,
+        help='Total number of tasks to create (>=max_tasks)')
+    argparser.add_argument(
+        '--record-data',
+        action='store_true',
+        help='Record data to disk as frames')
     argparser.add_argument(
         '--show-sim',
         action='store_true',

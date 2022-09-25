@@ -8,3 +8,11 @@
 *.pdf
 *.csv
 
+
+scripts/results/
+
+scripts/tasks/
+
+*.o
+
+thirdParty/lkh/LKH-3.0.7/LKH
