@@ -29,6 +29,6 @@ class Task:
 
     def wait_time(self):
         if self.time_serviced == -1:
-            raise DataError("Task service not complete!")
+            raise ValueError("Task service not complete!")
 
         return self.time_serviced - self.time

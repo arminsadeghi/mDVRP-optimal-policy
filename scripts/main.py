@@ -16,10 +16,17 @@ def simulate(args, delivery_log=None):
 
     if args.show_sim:
         pygame.init()
-        screen = pygame.display.set_mode((args.height, args.width))
+        size = (args.width, args.height)
+        screen = pygame.display.set_mode(size)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.display.set_caption('Simulation')
 
         clock = pygame.time.Clock()
+        pygame.font.init()
+    elif args.record_data:
+        # pygame.init()
+        size = (args.width, args.height)
+        surface = pygame.Surface(size, pygame.SRCALPHA)
         pygame.font.init()
     else:
         screen = None
@@ -36,6 +43,12 @@ def simulate(args, delivery_log=None):
 
     if args.total_tasks < args.max_tasks:
         args.total_tasks = args.max_tasks
+
+    # override initial tasks
+    if args.service_time:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+    else:
+        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
@@ -57,10 +70,10 @@ def simulate(args, delivery_log=None):
         num_actors=args.actors,
         pois_lambda=args.lambd,
         service_time=args.service_time,
-        screen=screen,
+        screen=surface if args.show_sim or args.record_data else None,
         max_tasks=args.max_tasks,
         max_time=args.max_time,
-        show_sim=args.show_sim,
+        record_data=args.record_data,
         sectors=args.sectors,
         delivery_log=delivery_log
     )
@@ -89,12 +102,12 @@ def simulate(args, delivery_log=None):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
-            screen.fill((0, 0, 0))
         rval = sim.tick(tick_time=args.tick_time, max_simulation_time=args.max_time, max_tasks=args.max_tasks)
         if rval == -1:
             break
 
         if args.show_sim:
+            screen.blit(surface, (0, 0))
             pygame.display.flip()
             pygame.display.update()
             clock.tick(1.0/args.tick_time*args.simulation_speed)
@@ -283,6 +296,10 @@ if __name__ == "__main__":
         default=MAX_SERVICED_TASKS,
         type=int,
         help='Total number of tasks to create (>=max_tasks)')
+    argparser.add_argument(
+        '--record-data',
+        action='store_true',
+        help='Record data to disk as frames')
     argparser.add_argument(
         '--show-sim',
         action='store_true',

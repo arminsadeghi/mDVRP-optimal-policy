@@ -37,6 +37,7 @@ def get_distance_matrix(actors, tasks):
 def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=False):
     for actor in actors:
         actor.path = []
+        actor.complete_path = []
 
     for actor_index in range(len(actors)):
 
@@ -67,5 +68,11 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=
             task_index = task_indices[index]
             actors[actor_index].path.append(tasks[task_index])
         actors[actor_index].path.append(Task(-1, [0.5, 0.5], -1))
+
+        # store the complete path as well for visualization purposes
+        for index in tours[actor_index][1:]:
+            task_index = task_indices[index]
+            actors[actor_index].complete_path.append(tasks[task_index])
+        actors[actor_index].complete_path.append(Task(-1, [0.5, 0.5], -1))
 
     return actors
