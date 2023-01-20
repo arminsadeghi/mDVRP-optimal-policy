@@ -75,6 +75,7 @@ def simulate(args, delivery_log=None):
         max_time=args.max_time,
         record_data=args.record_data,
         sectors=args.sectors,
+        centralized=args.centralized,
         delivery_log=delivery_log
     )
 
@@ -300,6 +301,10 @@ if __name__ == "__main__":
         '--record-data',
         action='store_true',
         help='Record data to disk as frames')
+    argparser.add_argument(
+        '--centralized',
+        action='store_true',
+        help='Set up one depot in the centre of the map')
     argparser.add_argument(
         '--show-sim',
         action='store_true',

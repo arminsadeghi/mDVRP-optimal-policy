@@ -1,0 +1,122 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/thirdParty/lkh/LKH-3.0.7/LKH",
+            "args": [
+                "/tmp/tmpk5xhttdv"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/scripts"
+        },
+        {
+            "name": "Python: Main",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/scripts",
+            "args": [
+                "--actors",
+                "1",
+                "--policy",
+                // "quad_wait_tsp",
+                "lkh_batch_tsp",
+                "--show-sim",
+                // "--record-data",
+                "--max-tasks",
+                "2000",
+                "--total-tasks",
+                "2000",
+                // "--initial-tasks",
+                // "10",
+                "--service-time",
+                "1.0",
+                "--cost-exponent",
+                "1.5",
+                "--seed",
+                "223",
+                "--lambd",
+                "0.7",
+                "--generator",
+                "uniform",
+                // "bad_business",
+                // "--multipass",
+                // "--gamma",
+                // "0.99",
+                "--eta",
+                "0.2",
+                // "--eta-first",
+                "--sectors",
+                "12",
+            ]
+        },
+        {
+            "name": "Python: centroid",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/centroid.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
+            "name": "Python: Pathos",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/pathos.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
+            "name": "Python: load",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/load_vis.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
+            "name": "Python: Gauss",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/generators/bimod_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        }
+    ]
+}

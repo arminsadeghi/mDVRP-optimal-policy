@@ -10,14 +10,14 @@ from importlib import import_module
 from math import sqrt, exp
 import numpy as np
 
-from centroid import Field, Sector
+from Field import Field, Sector
 import colorsys
 
 
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, delivery_log=None):
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, centralized=False, delivery_log=None):
         self.num_actors = num_actors
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
@@ -45,6 +45,7 @@ class Simulation:
         self.sectors = sectors
         self.field = Field(self.vertices, self.centre, self.sectors)
         self.current_sector = self.field.next_sector()
+        self.centralized = centralized
 
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
@@ -56,14 +57,30 @@ class Simulation:
         self.reset()
 
     def reset(self, task_list=None):
-        self.actor_list = [
-            Actor(
+
+        if not self.centralized and self.num_actors != self.sectors:
+            raise ValueError("ERROR: The number of actors must equal the number of sectors for non-central service!")
+
+        self.actor_list = []
+        for i in range(self.num_actors):
+            if self.centralized:
+                pos = [0.5, 0.5]
+                depot = pos
+                sector = 0
+            else:
+                sector = i
+                pos = self.field.sectors[sector].get_centroid()
+                depot = pos
+
+            self.actor_list.append(Actor(
                 id=i+1,
-                pos=[0.5, 0.5],
+                pos=pos,
+                sector=sector,
+                depot=depot,
                 service_time=self.service_time,
                 speed=self.actor_speed,
                 screen=self.screen
-            ) for i in range(self.num_actors)]
+            ))
 
         self.serviced_tasks = []
         self.sim_time = 0.
@@ -408,9 +425,9 @@ class Simulation:
             self.delivery_log.write(self.task_list[rval.id].to_string()+'\n')
             self.delivery_log.flush()
 
-        # if the actor is now idle, move to the next sector
-        if not self.actor_list[0].is_busy():
-            self.current_sector = self.field.next_sector()
+        # # if the actor is now idle, move to the next sector
+        # if not self.actor_list[0].is_busy():
+        #     self.current_sector = self.field.next_sector()
 
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
@@ -434,37 +451,56 @@ class Simulation:
             print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
             self.next_task += 1
 
+        # TODO: The selection of the next policy, and the target of the Actor(s) should really be in the policy, not here in
+        #       the simulation code.
+        #
         # if the actor is idle
-        if not self.actor_list[0].is_busy():
+        for actor in self.actor_list:
+            if not actor.is_busy():
 
-            # check if we need to update the actor's target
-            if self.current_sector.is_near_centre(self.actor_list[0].pos):
-                self.current_sector = self.field.next_sector()
+                sector_tasks = []
+                if self.centralized:
+                    for _ in range(self.sectors):
+                        for task in self.task_list:
+                            if self.sim_time < task.time:
+                                break
 
-            sector_tasks = []
-            # go through the task list and assign tasks (this is going to be the slow way...)
-            for _ in range(self.sectors):
-                for task in self.task_list:
-                    if self.sim_time < task.time:
-                        break
+                            if not task.is_pending():
+                                continue
 
-                    if task.is_pending():
-                        if self.current_sector.is_mine(task.location):
+                            if self.current_sector.contains(task.location):
+                                sector_tasks.append(task)
+
+                        if len(sector_tasks):
+                            print("[{:.2f}]: Currently {} tasks pending for sector {}".format(
+                                round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
+                            break
+
+                        # nothing in this sector, check the next
+                        self.current_sector = self.field.next_sector()
+
+                else:
+                    for task in self.task_list:
+                        if self.sim_time < task.time:
+                            break
+
+                        if not task.is_pending():
+                            continue
+
+                        if self.field.sectors[actor.sector].contains(task.location):
                             sector_tasks.append(task)
 
                 if len(sector_tasks):
-                    print("[{:.2f}]: Currently {} tasks pending for sector {}".format(round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
-                    break
+                    self._policy(actors=[actor,], tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
+                                 cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
 
-                # nothing in this sector, check the next
-                self.current_sector = self.field.next_sector()
-
-            if len(sector_tasks):
-                self._policy(actors=self.actor_list, tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
-                             cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
-            else:
-                target = self.centre  # self.current_sector.get_centroid()
-                self.actor_list[0].path = [Task(-1, target, -1)]
+                    if self.centralized:
+                        # assigned this sector, moving on...
+                        self.current_sector = self.field.next_sector()
+                else:
+                    if not actor.near(actor.depot):
+                        # send the actor home
+                        actor.path = [Task(-1, actor.get_depot(), -1)]
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):

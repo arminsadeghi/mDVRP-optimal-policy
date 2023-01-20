@@ -66,13 +66,15 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=
         for _i in range(tour_start, tour_end, tour_step):
             index = tours[actor_index][_i]
             task_index = task_indices[index]
+            tasks[task_index].service_state = ServiceState.ASSIGNED
             actors[actor_index].path.append(tasks[task_index])
-        actors[actor_index].path.append(Task(-1, [0.5, 0.5], -1))
+
+        actors[actor_index].path.append(Task(-1, actors[actor_index].get_depot(), -1))
 
         # store the complete path as well for visualization purposes
         for index in tours[actor_index][1:]:
             task_index = task_indices[index]
             actors[actor_index].complete_path.append(tasks[task_index])
-        actors[actor_index].complete_path.append(Task(-1, [0.5, 0.5], -1))
+        actors[actor_index].complete_path.append(Task(-1, actors[actor_index].get_depot(), -1))
 
     return actors
