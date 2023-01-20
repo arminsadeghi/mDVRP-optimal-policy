@@ -16,7 +16,7 @@ class Sector:
         self.polygon = polygon
         self.id = id
 
-    def is_mine(self, location):
+    def contains(self, location):
         return self.polygon.intersects(Point(location[0], location[1]))
 
     def is_near_centre(self, location, tolerance=0.01):

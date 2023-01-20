@@ -5,10 +5,11 @@ from Task import Task, ServiceState
 
 
 class Actor:
-    def __init__(self, id=0, pos=[0, 0], depot=[0.5,0.5], speed=1.0, service_time=1, screen=None):
+    def __init__(self, id=0, pos=[0, 0], sector=None, depot=[0.5, 0.5], speed=1.0, service_time=1, screen=None):
         self.id = id
         self.pos = pos
         self.depot = depot
+        self.sector = sector
         self.path = []
         self.complete_path = []
         self.speed = speed
@@ -27,10 +28,20 @@ class Actor:
         self.history.append((0, self.changes_since_last_completion, self.max_changes_before_completion, len(self.path)))
         self.orientation = 0
 
+    def assign(self, sector, depot):
+        self.sector = sector
+        if depot is None:
+            self.depot = self.sector.get_centroid()
+        else:
+            self.depot = depot
+
     def distance_to(self, pos):
         dx = self.pos[0] - pos[0]
         dy = self.pos[1] - pos[1]
         return sqrt(dx*dx + dy*dy)
+
+    def near(self, pos, tolerance=DISTANCE_TOLERANCE):
+        return self.distance_to(pos) <= tolerance
 
     def _move(self, sim_time):
         """move towards the goal
