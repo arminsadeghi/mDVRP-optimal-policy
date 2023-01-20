@@ -60,6 +60,7 @@ class Simulation:
             Actor(
                 id=i+1,
                 pos=[0.5, 0.5],
+                depot=[0.5,0.5],
                 service_time=self.service_time,
                 speed=self.actor_speed,
                 screen=self.screen
@@ -434,37 +435,44 @@ class Simulation:
             print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
             self.next_task += 1
 
+        # TODO: The selection of the next policy, and the target of the Actor(s) should really be in the policy, not here in
+        #       the simulation code.
+        #
         # if the actor is idle
-        if not self.actor_list[0].is_busy():
+        for actor in self.actor_list:
+            if not actor.is_busy():
 
-            # check if we need to update the actor's target
-            if self.current_sector.is_near_centre(self.actor_list[0].pos):
-                self.current_sector = self.field.next_sector()
+                # # check if we need to update the actor's target
+                # if self.current_sector.is_near_centre(actor.pos):
+                #     self.current_sector = self.field.next_sector()
 
-            sector_tasks = []
-            # go through the task list and assign tasks (this is going to be the slow way...)
-            for _ in range(self.sectors):
-                for task in self.task_list:
-                    if self.sim_time < task.time:
+                sector_tasks = []
+                # go through the task list and assign tasks (this is going to be the slow way...)
+                for _ in range(self.sectors):
+                    for task in self.task_list:
+                        if self.sim_time < task.time:
+                            break
+
+                        if task.is_pending():
+                            if self.current_sector.is_mine(task.location):
+                                sector_tasks.append(task)
+
+                    if len(sector_tasks):
+                        print("[{:.2f}]: Currently {} tasks pending for sector {}".format(round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
                         break
 
-                    if task.is_pending():
-                        if self.current_sector.is_mine(task.location):
-                            sector_tasks.append(task)
+                    # nothing in this sector, check the next
+                    self.current_sector = self.field.next_sector()
 
                 if len(sector_tasks):
-                    print("[{:.2f}]: Currently {} tasks pending for sector {}".format(round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
-                    break
+                    self._policy(actors=[actor,], tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
+                                cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
 
-                # nothing in this sector, check the next
-                self.current_sector = self.field.next_sector()
-
-            if len(sector_tasks):
-                self._policy(actors=self.actor_list, tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
-                             cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
-            else:
-                target = self.centre  # self.current_sector.get_centroid()
-                self.actor_list[0].path = [Task(-1, target, -1)]
+                    # assigned this sector, moving on...
+                    self.current_sector = self.field.next_sector()
+                else:
+                    # target = self.current_sector.get_centroid()
+                    actor.path = [Task(-1, actor.get_depot(), -1)]
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):

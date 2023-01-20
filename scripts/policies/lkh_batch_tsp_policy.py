@@ -47,5 +47,5 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
 
     tours = solve_tsp('DVR TSP', 'Distance between Pending Tasks', idle_actors[0].pos, tasks, scale_factor=10000.0)
 
-    assign_tours_to_actors(idle_actors, tasks, tours, task_indices, eta=eta)
+    assign_tours_to_actors([idle_actors[0],], tasks, tours, task_indices, eta=eta)
     return False
