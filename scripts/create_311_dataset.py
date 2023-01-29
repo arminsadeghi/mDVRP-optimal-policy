@@ -14,6 +14,7 @@ import distinctipy
 
 from sklearn.cluster import KMeans
 
+
 # No google for you -- licences are too restrictive re: data usage
 # import googlemaps
 import requests
@@ -79,6 +80,23 @@ FILTERED_COLUMNS = [
     "LOC_LAT",
 ]
 
+FILTERED_DATATYPES = {
+    "ID_UNIQUE": str,
+    "NATURE": str,            # Requete
+    "ACTI_NOM": str,
+    "TYPE_LIEU_INTERV": str,  # Address / Intersection
+    "RUE": str,               # if an address
+    "RUE_INTERSECTION1": str,  # if an intersection
+    "RUE_INTERSECTION2": str,  # if an intersection
+    "ARRONDISSEMENT": str,
+    "ARRONDISSEMENT_GEO": str,
+    "LIN_CODE_POSTAL": str,
+    "DDS_DATE_CREATION": str,
+    "UNITE_RESP_PARENT": str,
+    "LOC_LONG": np.float64,
+    "LOC_LAT": np.float64,
+}
+
 DISTANCE_COLUMNS = [
     "SEED",
     "SRC_ID_UNIQUE",
@@ -90,6 +108,10 @@ DISTANCE_COLUMNS = [
     "DISTANCE",
     "TRAVEL_TIME"
 ]
+
+NATURE_OF_SERVICE = 'Requete'
+BOROUGH_OF_SERVICE = 'Montréal-Nord'
+
 
 CLUSTERED_COLUMNS = [
     "SEED",
@@ -103,12 +125,8 @@ CLUSTERED_COLUMNS = [
 ]
 
 
-NATURE_OF_SERVICE = 'Requete'
-BOROUGH_OF_SERVICE = 'Montréal-Nord'
-
-
 def load_data(args):
-    df = pd.read_csv(args.input)
+    df = pd.read_csv(args.input, dtype=FILTERED_DATATYPES)
     rng = np.random.default_rng(seed=args.seed)
     rows = rng.integers(len(df), size=[args.samples,])
     return df.iloc[rows]
@@ -117,10 +135,14 @@ def load_data(args):
 def visualize(df):
     fig, ax = plt.subplots()
     fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-    colours = distinctipy.get_colors(n_colors=args.clusters, colorblind_type='Deuteranomaly')
+    sb.scatterplot(data=df, x='LOC_LONG', y='LOC_LAT')
 
+
+def visualize_clusters(df):
+    fig, ax = plt.subplots()
+    fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+    colours = distinctipy.get_colors(n_colors=args.clusters, colorblind_type='Deuteranomaly')
     sb.scatterplot(data=df, x='X', y='Y', hue='CLUSTER', palette=colours, style='DEPOT', markers=['o', 's'], sizes=[25, 65], size='DEPOT')
-    plt.show(block=True)
 
 
 def cluster_data(args, df):
@@ -150,7 +172,7 @@ def cluster_data(args, df):
     for i, centre in enumerate(clusters.cluster_centers_):
         entry = {
             "SEED": args.seed,
-            "ID_UNIQUE": 'depot'+f'{i:002}',
+            "ID_UNIQUE": 'depot'+f'{i:03}',
             "LOC_LONG": centre[1],
             "LOC_LAT": centre[0],
             "X": (centre[1] - long_base) / data_range,
@@ -163,15 +185,63 @@ def cluster_data(args, df):
     return pd.concat((pd.DataFrame(depots), df))
 
 
+def collect_distance_data(args, df):
+
+    distances = []
+
+    df = df.reset_index()
+    clusters = df.CLUSTER.unique()
+
+    for cluster in clusters:
+        idx = df.index[df.CLUSTER == cluster]
+
+        for si, src_row in df.loc[idx].iterrows():
+            for di, dst_row in df.loc[idx].iterrows():
+
+                response = requests.get(
+                    f'http://localhost:5000/table/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}')
+                data = json.loads(response.text)
+
+                if data['code'] != 'Ok':
+                    continue
+
+                travel_time = data['durations'][0][1]
+                travel_distance = 0
+
+                entry = {
+                    "SEED": args.seed,
+                    "SRC_ID_UNIQUE": src_row['ID_UNIQUE'],
+                    "SRC_INDEX": si,
+                    "SRC_LOC_LONG": src_row['LOC_LONG'],
+                    "SRC_LOC_LAT": src_row['LOC_LAT'],
+                    "DST_ID_UNIQUE": dst_row['ID_UNIQUE'],
+                    "DST_INDEX": di,
+                    "DST_LOC_LONG": dst_row['LOC_LONG'],
+                    "DST_LOC_LAT": src_row['LOC_LAT'],
+                    "DISTANCE": travel_distance,
+                    "TRAVEL_TIME": travel_time,
+                }
+
+                distances.append(entry)
+
+    return pd.DataFrame(distances)
+
+
 def main(args):
 
     df = load_data(args)
+    visualize(df)
 
     data = cluster_data(args, df)
-    visualize(data)
-
+    visualize_clusters(data)
     output = ".".join(args.input.split('.')[:-1] + ['clustered', 'csv'])
     data.to_csv(output, index=False)
+
+    plt.show(block=True)
+
+    distance_data = collect_distance_data(args, data)
+    output = ".".join(args.input.split('.')[:-1] + ['distances', 'csv'])
+    distance_data.to_csv(output, index=False)
 
 
 if __name__ == "__main__":
@@ -189,15 +259,15 @@ if __name__ == "__main__":
         type=int,
         help='Random seed for generation')
     argparser.add_argument(
+        '--samples',
+        default=10,
+        type=int,
+        help='Number of samples to draw')
+    argparser.add_argument(
         '--clusters',
         default=2,
         type=int,
         help='Number of Clusters to create')
-    argparser.add_argument(
-        '--samples',
-        default=2500,
-        type=int,
-        help='Number of samples to draw')
 
     args = argparser.parse_args()
 

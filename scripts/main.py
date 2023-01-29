@@ -1,5 +1,4 @@
 import argparse
-from importlib.metadata import distribution
 from random import seed
 from simulation import Simulation
 from config import *
@@ -50,12 +49,16 @@ def simulate(args, delivery_log=None):
     else:
         args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
+    if args.data_source is not None:
+        args.actors = None
+
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
     generator_args['initial_tasks'] = args.initial_tasks
     generator_args['total_tasks'] = args.total_tasks
+    generator_args['data_source'] = args.data_source
 
     sim = Simulation(
         policy_name=args.policy,
@@ -268,12 +271,12 @@ if __name__ == "__main__":
         type=float,
         help='Service time on arrival at each node')
     argparser.add_argument(
-        '--simulation_speed',
+        '--simulation-speed',
         default=SIMULATION_SPEED,
         type=float,
         help='Simulator speed')
     argparser.add_argument(
-        '-t', '--tick_time',
+        '-t', '--tick-time',
         default=TICK_TIME,
         type=float,
         help='Length of Simulation Time Step')
@@ -317,6 +320,10 @@ if __name__ == "__main__":
         '--multipass',
         action='store_true',
         help='Run the simulation over multiple lambda and seeds')
+    argparser.add_argument(
+        '--data-source',
+        default=None,
+        help='CSV file containing task locations. Durations/Distances are loaded from a companion file, <data-source root>.distances.csv.  If the distance file is unavailable, euclidean distances are used instead')
 
     args = argparser.parse_args()
 

@@ -50,6 +50,36 @@ ORIGINAL_COLUMNS = [
     "DATE_DERNIER_STATUT"
 ]
 
+ORIGINAL_DATATYPES = {
+    "ID_UNIQUE": str,
+    "NATURE": str,            # Requete
+    "ACTI_NOM": str,
+    "TYPE_LIEU_INTERV": str,  # Address / Intersection
+    "RUE": str,               # if an address
+    "RUE_INTERSECTION1": str,  # if an intersection
+    "RUE_INTERSECTION2": str,  # if an intersection
+    "ARRONDISSEMENT": str,
+    "ARRONDISSEMENT_GEO": str,
+    "LIN_CODE_POSTAL": str,
+    "DDS_DATE_CREATION": str,
+    "PROVENANCE_ORIGINALE": str,
+    "PROVENANCE_TELEPHONE": str,
+    "PROVENANCE_COURRIEL": str,
+    "PROVENANCE_PERSONNE": str,
+    "PROVENANCE_COURRIER": str,
+    "PROVENANCE_TELECOPIEUR": str,
+    "PROVENANCE_INSTANCE": str,
+    "PROVENANCE_MOBILE": str,
+    "PROVENANCE_MEDIASOCIAUX": str,
+    "PROVENANCE_SITEINTERNET": str,
+    "UNITE_RESP_PARENT": str,
+    "LOC_LONG": np.float64,
+    "LOC_LAT": np.float64,
+    "LOC_X": np.float64,
+    "LOC_Y": np.float64,
+    "DERNIER_STATUT": str,
+    "DATE_DERNIER_STATUT": str,
+}
 
 # reduce the columns to just those for processing requests (id, type, location, creation, lat/long)
 FILTERED_COLUMNS = [
@@ -74,12 +104,14 @@ BOROUGH_OF_SERVICE = 'Montréal-Nord'
 
 
 def parse(args):
-    df = pd.read_csv(args.input)
+    df = pd.read_csv(args.input, dtype=ORIGINAL_DATATYPES)
 
     df = df[FILTERED_COLUMNS]
     df = df.loc[(df['NATURE'] == NATURE_OF_SERVICE) & (df['ARRONDISSEMENT_GEO'] == BOROUGH_OF_SERVICE)]
+    df = df.reset_index()
+
     output = ".".join(args.input.split('.')[:-1] + ['filtered', 'csv'])
-    df.to_csv(output)
+    df.to_csv(output, index=False)
 
 
 if __name__ == "__main__":

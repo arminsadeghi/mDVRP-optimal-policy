@@ -10,7 +10,6 @@ from lkh_interface import solve_trp
 from os import path
 
 from policies.quad_wait_tsp_policy import policy as our_policy, tour_cost, plan_tours
-from policies.util import get_distance_matrix
 
 fname = 'trp_costs.csv'
 if not path.exists(fname):
@@ -34,7 +33,7 @@ def prep_tour(tasks):
     return pending_tasks, task_indices
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
+def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
     """tsp policy
 
     Args:

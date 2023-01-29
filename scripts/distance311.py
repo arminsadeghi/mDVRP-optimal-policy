@@ -143,9 +143,11 @@ def collect_distance_data(args, df):
             entry = {
                 "SEED": args.seed,
                 "SRC_ID_UNIQUE": src_row['ID_UNIQUE'],
+                "SRC_INDEX": si,
                 "SRC_LOC_LONG": src_row['LOC_LONG'],
                 "SRC_LOC_LAT": src_row['LOC_LAT'],
                 "DST_ID_UNIQUE": dst_row['ID_UNIQUE'],
+                "SRC_INDEX": di,
                 "DST_LOC_LONG": dst_row['LOC_LONG'],
                 "DST_LOC_LAT": src_row['LOC_LAT'],
                 "DISTANCE": travel_distance,

@@ -18,7 +18,6 @@ class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
                  max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, centralized=False, delivery_log=None):
-        self.num_actors = num_actors
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
         self.screen = screen
@@ -39,16 +38,25 @@ class Simulation:
 
         self.delivery_log = delivery_log
 
-        # split the environment...
-        self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
-        self.centre = [0.5, 0.5]
-        self.sectors = sectors
-        self.field = Field(self.vertices, self.centre, self.sectors)
-        self.current_sector = self.field.next_sector()
-        self.centralized = centralized
-
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
+
+        if num_actors:
+            # split the environment...
+            self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
+            self.centre = [0.5, 0.5]
+            self.num_sectors = sectors
+            self.field = Field(self.vertices, self.centre, self.num_sectors)
+
+            self.num_actors = num_actors
+            self.centralized = centralized
+        else:
+            self.centralized = False
+            self.field = self.generator.field
+            self.num_actors = self.field.count
+            self.num_sectors = self.field.count
+
+        self.current_sector = self.field.next_sector()
 
         # load the policy
         self.load_policy(policy_name=policy_name, policy_args=policy_args)
@@ -58,7 +66,7 @@ class Simulation:
 
     def reset(self, task_list=None):
 
-        if not self.centralized and self.num_actors != self.sectors:
+        if not self.centralized and self.num_actors != self.num_sectors:
             raise ValueError("ERROR: The number of actors must equal the number of sectors for non-central service!")
 
         self.actor_list = []
@@ -79,6 +87,7 @@ class Simulation:
                 depot=depot,
                 service_time=self.service_time,
                 speed=self.actor_speed,
+                euclidean=self.generator.is_euclidean(),
                 screen=self.screen
             ))
 
@@ -326,10 +335,10 @@ class Simulation:
             pygame.draw.line(
                 self.screen, ACTOR_PATH_COLOUR,
                 actor_loc_screen,
-                self._get_location_on_screen(actor.path[0].location), ACTOR_PATH_WIDTH)
+                self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
 
-            last_task = actor.path[0]
-            for task in actor.path[1:-1]:
+            last_task = actor.path[0][0]
+            for task, _ in actor.path[1:-1]:
                 if task.id < 0:
                     continue
                 pygame.draw.line(
@@ -460,7 +469,7 @@ class Simulation:
 
                 sector_tasks = []
                 if self.centralized:
-                    for _ in range(self.sectors):
+                    for _ in range(self.num_sectors):
                         for task in self.task_list:
                             if self.sim_time < task.time:
                                 break
@@ -468,7 +477,7 @@ class Simulation:
                             if not task.is_pending():
                                 continue
 
-                            if self.current_sector.contains(task.location):
+                            if self.current_sector.contains(task.sector):
                                 sector_tasks.append(task)
 
                         if len(sector_tasks):
@@ -487,20 +496,16 @@ class Simulation:
                         if not task.is_pending():
                             continue
 
-                        if self.field.sectors[actor.sector].contains(task.location):
+                        if self.field.sectors[actor.sector].contains(task.sector):
                             sector_tasks.append(task)
 
                 if len(sector_tasks):
-                    self._policy(actors=[actor,], tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
+                    self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
                                  cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
 
                     if self.centralized:
                         # assigned this sector, moving on...
                         self.current_sector = self.field.next_sector()
-                else:
-                    if not actor.near(actor.depot):
-                        # send the actor home
-                        actor.path = [Task(-1, actor.get_depot(), -1)]
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
@@ -539,7 +544,7 @@ class Simulation:
             if self.record_data:
                 eta_str = str(self.eta) + 'e_f' if self.eta_first else 'e'
                 pygame.image.save(
-                    self.screen, f'images/screen_{self.policy_name}_{self.sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
+                    self.screen, f'images/screen_{self.policy_name}_{self.num_sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
 
         # if self._show_sim:
         #     self._show_sim_info()
