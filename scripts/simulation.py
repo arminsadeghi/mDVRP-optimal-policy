@@ -14,6 +14,7 @@ from Field import Field, Sector
 import colorsys
 
 
+
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
@@ -57,6 +58,10 @@ class Simulation:
             self.num_sectors = self.field.count
 
         self.current_sector = self.field.next_sector()
+
+        # art objects
+        self.actor_image = pygame.image.load( 'assets/quad.svg' )
+        self.actor_image = pygame.transform.scale( self.actor_image, (ACTOR_IMAGE_SIZE,ACTOR_IMAGE_SIZE))
 
         # load the policy
         self.load_policy(policy_name=policy_name, policy_args=policy_args)
@@ -216,27 +221,40 @@ class Simulation:
                                SCREEN_OUTLINE_COLOUR,
                                (location[0], location[1]), size, 2)
 
+    # Quick image rotation
+    #   https://stackoverflow.com/questions/4183208/how-do-i-rotate-an-image-around-its-center-using-pygame
+    @staticmethod
+    def blitRotateCenter(surf, image, topleft, angle):
+        rotated_image = pygame.transform.rotate(image, np.rad2deg(angle))
+        new_rect = rotated_image.get_rect(center = image.get_rect(topleft=topleft).center)
+        surf.blit(rotated_image, new_rect)
+
     def _draw_actor(self, actor):
-        rot = np.array(
-            [
-                [np.cos(actor.orientation), np.sin(actor.orientation)],
-                [-np.sin(actor.orientation), np.cos(actor.orientation)],
-            ]
-        )
+        # rot = np.array(
+        #     [
+        #         [np.cos(actor.orientation), np.sin(actor.orientation)],
+        #         [-np.sin(actor.orientation), np.cos(actor.orientation)],
+        #     ]
+        # )
 
-        pts = np.array([
-            [5, 0],
-            [-5, 4],
-            [-2, 0],
-            [-5, -4],
-            [5, 0],
-        ]) * 5
+        # pts = np.array([
+        #     [5, 0],
+        #     [-5, 4],
+        #     [-2, 0],
+        #     [-5, -4],
+        #     [5, 0],
+        # ]) * 5
 
-        pts = ((rot @ pts.T) + np.array([self._xmargin + actor.pos[0]*self._env_size,
-                                         self._ymargin + self._env_size - actor.pos[1]*self._env_size]).reshape([2, 1])).T
+        # pts = ((rot @ pts.T) + np.array([self._xmargin + actor.pos[0]*self._env_size,
+        #                                  self._ymargin + self._env_size - actor.pos[1]*self._env_size]).reshape([2, 1])).T
 
-        pygame.draw.polygon(self.screen, ACTOR_COLOUR, pts, 0)
-        pygame.draw.polygon(self.screen, SCREEN_OUTLINE_COLOUR, pts, ACTOR_PATH_WIDTH)
+        # pygame.draw.polygon(self.screen, ACTOR_COLOUR, pts, 0)
+        # pygame.draw.polygon(self.screen, SCREEN_OUTLINE_COLOUR, pts, ACTOR_PATH_WIDTH)
+
+        x = self._xmargin + actor.pos[0]*self._env_size - ACTOR_IMAGE_SIZE//2
+        y = self._ymargin + self._env_size - actor.pos[1]*self._env_size - ACTOR_IMAGE_SIZE//2
+
+        Simulation.blitRotateCenter( surf=self.screen, image=self.actor_image, topleft=(x,y), angle=actor.orientation)
 
     def _plot_tasks(self):
         """_summary_
@@ -295,7 +313,8 @@ class Simulation:
             avg = self._avg_served_time/len(self.serviced_tasks)
         total_str = f'Serviced: {len(self.serviced_tasks)}'
         avg_str = f"Average Wait: {avg:5.2f}"
-        var_str = f"Variance: {self.calculate_variance():5.2f}"
+        # var_str = f"Variance: {self.calculate_variance():5.2f}"
+        var_str = f"Max Wait: {self._max_served_time:5.2f}"
 
         text_width, text_height = self.status_font.size(avg_str)
 
