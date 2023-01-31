@@ -244,7 +244,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 30.0
+        max_lateness = 300.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -496,7 +496,7 @@ class Simulation:
                         if not task.is_pending():
                             continue
 
-                        if self.field.sectors[actor.sector].contains(task.sector):
+                        if actor.sector == task.sector:
                             sector_tasks.append(task)
 
                 if len(sector_tasks):
