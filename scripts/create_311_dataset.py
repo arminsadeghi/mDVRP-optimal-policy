@@ -182,10 +182,10 @@ def cluster_data(args, df):
         }
         depots.append(entry)
 
-    return pd.concat((pd.DataFrame(depots), df))
+    return pd.concat((pd.DataFrame(depots), df)), long_base, lat_base, data_range
 
 
-def collect_distance_data(args, df):
+def collect_distance_data(args, df, long_base=0, lat_base=0, data_range=1):
 
     distances = []
 
@@ -198,15 +198,34 @@ def collect_distance_data(args, df):
         for si, src_row in df.loc[idx].iterrows():
             for di, dst_row in df.loc[idx].iterrows():
 
-                response = requests.get(
-                    f'http://localhost:5000/table/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}')
-                data = json.loads(response.text)
-
-                if data['code'] != 'Ok':
+                if si == di:
                     continue
 
-                travel_time = data['durations'][0][1]
+                response = requests.get(
+                    f'http://localhost:5000/table/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}'
+                )
+                data1 = json.loads(response.text)
+                if data1['code'] != 'Ok':
+                    continue
+                travel_time = data1['durations'][0][1]
                 travel_distance = 0
+
+                response = requests.get(
+                    f'http://localhost:5000/route/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}?alternatives=false&steps=true&overview=false'
+                )
+                data2 = json.loads(response.text)
+                if data2['code'] != 'Ok':
+                    continue
+
+                route = data2['routes'][0]
+                scaled_waypoints = []
+                waypoints = []
+                for leg in route['legs']:
+                    for step in leg['steps']:
+                        waypoint = step['maneuver']['location']
+                        waypoints.append(f'{waypoint[0]}:{waypoint[1]}')
+                        scaled_waypoint = ((waypoint[0] - long_base)/data_range, (waypoint[1] - lat_base)/data_range)
+                        scaled_waypoints.append(f'{scaled_waypoint[0]}:{scaled_waypoint[1]}')
 
                 entry = {
                     "SEED": args.seed,
@@ -220,6 +239,8 @@ def collect_distance_data(args, df):
                     "DST_LOC_LAT": src_row['LOC_LAT'],
                     "DISTANCE": travel_distance,
                     "TRAVEL_TIME": travel_time,
+                    "WAYPOINTS": ';'.join(waypoints),
+                    "SCALED_WAYPOINTS": ';'.join(scaled_waypoints),
                 }
 
                 distances.append(entry)
@@ -232,15 +253,15 @@ def main(args):
     df = load_data(args)
     visualize(df)
 
-    data = cluster_data(args, df)
+    data, long_base, lat_base, data_range = cluster_data(args, df)
     visualize_clusters(data)
-    output = ".".join(args.input.split('.')[:-1] + ['clustered', 'csv'])
+    output = ".".join([args.output, 'clustered', 'csv'])
     data.to_csv(output, index=False)
 
     plt.show(block=True)
 
-    distance_data = collect_distance_data(args, data)
-    output = ".".join(args.input.split('.')[:-1] + ['distances', 'csv'])
+    distance_data = collect_distance_data(args, data, long_base, lat_base, data_range)
+    output = ".".join([args.output, 'distances', 'csv'])
     distance_data.to_csv(output, index=False)
 
 
@@ -251,6 +272,11 @@ if __name__ == "__main__":
     argparser.add_argument(
         '--input',
         default=None,
+        type=str,
+        help='Source CSV file')
+    argparser.add_argument(
+        '--output',
+        default='taskdata',
         type=str,
         help='Source CSV file')
     argparser.add_argument(
