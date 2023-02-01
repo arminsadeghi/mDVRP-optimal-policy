@@ -53,6 +53,18 @@ class DataLoader():
         full_index = pivot_df.index.union(pivot_df.columns)
         self.distances = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0.0).to_numpy()
 
+        pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
+        full_index = pivot_df.index.union(pivot_df.columns)
+        self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
+
+        for r in range(self.paths.shape[0]):
+            for c in range(self.paths.shape[1]):
+                if self.paths[r, c] == 0:
+                    self.paths[r, c] = None
+                else:
+                    locations = [loc for loc in self.paths[r, c].split(';')]
+                    self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
+
         self.field = DataField(self.tasks, self.distances)
 
     def draw(self):

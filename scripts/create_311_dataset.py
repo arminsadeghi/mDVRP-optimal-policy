@@ -211,7 +211,7 @@ def collect_distance_data(args, df, long_base=0, lat_base=0, data_range=1):
                 travel_distance = 0
 
                 response = requests.get(
-                    f'http://localhost:5000/route/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}?alternatives=false&steps=true&overview=false'
+                    f'http://localhost:5000/route/v1/driving/{src_row["LOC_LONG"]},{src_row["LOC_LAT"]};{dst_row["LOC_LONG"]},{dst_row["LOC_LAT"]}?alternatives=false&steps=true&overview=full'
                 )
                 data2 = json.loads(response.text)
                 if data2['code'] != 'Ok':
@@ -222,10 +222,11 @@ def collect_distance_data(args, df, long_base=0, lat_base=0, data_range=1):
                 waypoints = []
                 for leg in route['legs']:
                     for step in leg['steps']:
-                        waypoint = step['maneuver']['location']
-                        waypoints.append(f'{waypoint[0]}:{waypoint[1]}')
-                        scaled_waypoint = ((waypoint[0] - long_base)/data_range, (waypoint[1] - lat_base)/data_range)
-                        scaled_waypoints.append(f'{scaled_waypoint[0]}:{scaled_waypoint[1]}')
+                        for intersection in step['intersections']:
+                            waypoint = intersection['location']
+                            waypoints.append(f'{waypoint[0]}:{waypoint[1]}')
+                            scaled_waypoint = ((waypoint[0] - long_base)/data_range, (waypoint[1] - lat_base)/data_range)
+                            scaled_waypoints.append(f'{scaled_waypoint[0]}:{scaled_waypoint[1]}')
 
                 entry = {
                     "SEED": args.seed,
