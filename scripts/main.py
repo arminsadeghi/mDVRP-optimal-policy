@@ -44,10 +44,11 @@ def simulate(args, delivery_log=None):
         args.total_tasks = args.max_tasks
 
     # override initial tasks
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     if args.data_source is not None:
         args.actors = None
@@ -57,6 +58,7 @@ def simulate(args, delivery_log=None):
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
     generator_args['initial_tasks'] = args.initial_tasks
+    generator_args['max_initial_wait'] = args.max_initial_wait
     generator_args['total_tasks'] = args.total_tasks
     generator_args['data_source'] = args.data_source
 
@@ -260,7 +262,12 @@ if __name__ == "__main__":
         '--initial-tasks',
         default=0,
         type=int,
-        help='Pending tasks at the start of the simulation (t=0)')
+        help='Pending tasks at the start of the simulation (t=0).  If -1, waiting tasks will be scaled relative to lambda.')
+    argparser.add_argument(
+        '--max-initial-wait',
+        default=SERVICE_TIME,
+        type=float,
+        help='Initial tasks will have a waiting time randomly drawn from [0,max).')
     argparser.add_argument(
         '--load-tasks',
         action='store_true',

@@ -29,6 +29,7 @@ class Actor:
         self.orientation = 0
         self.last_task = None
         self.euclidean = euclidean
+        self.path_start_index = None
 
     def assign(self, sector, depot=None):
         self.sector = sector

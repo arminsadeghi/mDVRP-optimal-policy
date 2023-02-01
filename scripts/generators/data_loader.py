@@ -31,6 +31,10 @@ class DataLoader():
         except KeyError:
             self.initial_tasks = 0
         try:
+            self.max_initial_wait = kwargs['max_initial_wait']
+        except KeyError:
+            self.max_initial_wait = 0
+        try:
             self.total_tasks = kwargs['total_tasks']
         except KeyError:
             self.total_tasks = 1000
@@ -90,7 +94,7 @@ class DataLoader():
                 id=len(tasks),
                 location=location,
                 sector=sector,
-                time=0,
+                time=self.gen.uniform()*self.max_initial_wait * -1,   # initial tasks are from before clock start
                 index=task_index,
                 # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)

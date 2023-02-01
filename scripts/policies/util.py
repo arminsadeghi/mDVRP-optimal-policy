@@ -49,10 +49,12 @@ def get_distance_matrix(actors, tasks, field=None):
         for task_idx, task in enumerate(pending_tasks):
             task_idx += len(actors)
             if actor.last_task is None:
+                actor.path_start_index = actor.sector
                 # the actor is idle and sitting at the depot -- use that to calculate distances
                 distance_matrix[actor_idx, task_idx] = field.distances[actor.sector, task.index]
                 distance_matrix[task_idx, actor_idx] = field.distances[task.index, actor.sector]
             else:
+                actor.path_start_index = actor.last_task.index
                 # a little more complicated -- the actor is somewhere between the last task and the depot  - use a mix of both distances
                 distance_last_to_home = field.distances[actor.last_task.index, actor.sector]
                 distance_matrix[actor_idx, task_idx] = (field.distances[actor.sector, task.index] + distance_last_to_home * (1 - actor.ratio_complete))*(actor.ratio_complete) + \

@@ -229,30 +229,8 @@ class Simulation:
         surf.blit(rotated_image, new_rect)
 
     def _draw_actor(self, actor):
-        # rot = np.array(
-        #     [
-        #         [np.cos(actor.orientation), np.sin(actor.orientation)],
-        #         [-np.sin(actor.orientation), np.cos(actor.orientation)],
-        #     ]
-        # )
-
-        # pts = np.array([
-        #     [5, 0],
-        #     [-5, 4],
-        #     [-2, 0],
-        #     [-5, -4],
-        #     [5, 0],
-        # ]) * 5
-
-        # pts = ((rot @ pts.T) + np.array([self._xmargin + actor.pos[0]*self._env_size,
-        #                                  self._ymargin + self._env_size - actor.pos[1]*self._env_size]).reshape([2, 1])).T
-
-        # pygame.draw.polygon(self.screen, ACTOR_COLOUR, pts, 0)
-        # pygame.draw.polygon(self.screen, SCREEN_OUTLINE_COLOUR, pts, ACTOR_PATH_WIDTH)
-
         x = self._xmargin + actor.pos[0]*self._env_size - ACTOR_IMAGE_SIZE//2
         y = self._ymargin + self._env_size - actor.pos[1]*self._env_size - ACTOR_IMAGE_SIZE//2
-
         Simulation.blitRotateCenter(surf=self.screen, image=self.actor_image, topleft=(x, y), angle=actor.orientation)
 
     def _plot_tasks(self):
@@ -335,35 +313,42 @@ class Simulation:
         self.screen.blit(text, (x_avg_offset+STATUS_XMARGIN/3, y_avg_offset+text_height*2+STATUS_YMARGIN*1.6))
 
     def _draw_actor_path(self, actor):
-        path = actor.path
-        actor_loc_screen = self._get_location_on_screen(actor.pos)
+        # path = actor.path
+        # actor_loc_screen = self._get_location_on_screen(actor.pos)
 
         if len(actor.complete_path) > 1:
-            last_task = actor.complete_path[0]
-            for task in actor.complete_path[1:-1]:
-                if task.id < 0:
-                    continue
-                pygame.draw.line(
-                    self.screen, ACTOR_COMPLETE_PATH_COLOUR,
-                    self._get_location_on_screen(last_task.location),
-                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
-                last_task = task
 
-        if len(path) > 1:
-            pygame.draw.line(
-                self.screen, ACTOR_PATH_COLOUR,
-                actor_loc_screen,
-                self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
+            # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
+            # the actor's depot
+            path = []
+            last_index = actor.path_start_index
+            if last_index is not None:
+                for task in actor.complete_path:
+                    leg = self.generator.paths[last_index, task.index]
+                    if leg is not None:
+                        for point in leg:
+                            path.append(self._get_location_on_screen(point))
+                    path.append( self._get_location_on_screen(task.location) )
+                    last_index = task.index
 
-            last_task = actor.path[0][0]
-            for task, _ in actor.path[1:-1]:
-                if task.id < 0:
-                    continue
-                pygame.draw.line(
-                    self.screen, ACTOR_PATH_COLOUR,
-                    self._get_location_on_screen(last_task.location),
-                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
-                last_task = task
+            if len(path) > 2:
+                pygame.draw.lines( self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
+
+        # if len(path) > 1:
+        #     pygame.draw.line(
+        #         self.screen, ACTOR_PATH_COLOUR,
+        #         actor_loc_screen,
+        #         self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
+
+        #     last_task = actor.path[0][0]
+        #     for task, _ in actor.path[1:-1]:
+        #         if task.id < 0:
+        #             continue
+        #         pygame.draw.line(
+        #             self.screen, ACTOR_PATH_COLOUR,
+        #             self._get_location_on_screen(last_task.location),
+        #             self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
+        #         last_task = task
 
     def _draw_all_roads(self):
         try:
