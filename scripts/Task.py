@@ -11,16 +11,18 @@ class ServiceState(Enum):
 
 
 class Task:
-    def __init__(self, id, location, time, service_time=SERVICE_TIME):
+    def __init__(self, id, location, time, sector=0, index=None, service_time=SERVICE_TIME):
         self.id = id
         self.location = location
+        self.sector = sector
         self.time = time
+        self.index = index
         self.service_state = ServiceState.WAITING
         self.time_serviced = -1
         self.service_time = service_time
 
     def is_pending(self):
-        if self.service_state == ServiceState.WAITING: # or self.service_state == ServiceState.ASSIGNED:
+        if self.service_state == ServiceState.WAITING:  # or self.service_state == ServiceState.ASSIGNED:
             return True
         return False
 

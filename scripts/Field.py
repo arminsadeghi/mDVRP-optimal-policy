@@ -12,15 +12,21 @@ def distance(a, b):
 
 
 class Sector:
-    def __init__(self, id, polygon) -> None:
+    def __init__(self, id, polygon=None, centroid=None) -> None:
         self.polygon = polygon
+        self.centroid = centroid
+        if self.centroid is None:
+            self.centroid = (self.polygon.centroid.x, self.polygon.centroid.y)
         self.id = id
 
     def contains(self, location):
-        return self.polygon.intersects(Point(location[0], location[1]))
+        if type(location) != list and type(location) != np.array and type(location) != tuple:
+            return self.id == location
+        else:
+            return self.polygon.intersects(Point(location[0], location[1]))
 
     def is_near_centre(self, location, tolerance=0.01):
-        dist = Point(location[0], location[1]).distance(self.polygon.centroid)
+        dist = Point(location[0], location[1]).distance(self.centroid)
         if dist <= tolerance:
             return True
         return False
@@ -29,7 +35,7 @@ class Sector:
         return self.polygon
 
     def get_centroid(self):
-        return (self.polygon.centroid.x, self.polygon.centroid.y)
+        return self.centroid
 
 
 class Field:
@@ -85,6 +91,34 @@ class Field:
     def next_sector(self):
         self.sector_index = (self.sector_index + 1) % self.count
         return self.sectors[self.sector_index]
+
+    def is_euclidean(self):
+        # TODO: All data files are assumed to be non-euclidean for the time being -- distances are encoded in
+        #       the datafile and not calculated here.
+        return True
+
+
+class DataField:
+    def __init__(self, df, distances) -> None:
+        super().__init__()
+
+        self.sectors = []
+        self.sector_index = 0
+        self.count = 0
+        self.distances = distances
+
+        for i, row in df.loc[df['DEPOT'] == True].iterrows():
+            self.sectors.append(Sector(id=self.count, centroid=(row['X'], row['Y'])))
+            self.count += 1
+
+    def next_sector(self):
+        self.sector_index = (self.sector_index + 1) % self.count
+        return self.sectors[self.sector_index]
+
+    def is_euclidean(self):
+        # TODO: All data files are assumed to be non-euclidean for the time being -- distances are encoded in
+        #       the datafile and not calculated here.
+        return False
 
 
 if __name__ == '__main__':
