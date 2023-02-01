@@ -14,7 +14,6 @@ from Field import Field, Sector
 import colorsys
 
 
-
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
@@ -226,7 +225,7 @@ class Simulation:
     @staticmethod
     def blitRotateCenter(surf, image, topleft, angle):
         rotated_image = pygame.transform.rotate(image, np.rad2deg(angle))
-        new_rect = rotated_image.get_rect(center = image.get_rect(topleft=topleft).center)
+        new_rect = rotated_image.get_rect(center=image.get_rect(topleft=topleft).center)
         surf.blit(rotated_image, new_rect)
 
     def _draw_actor(self, actor):
@@ -254,7 +253,7 @@ class Simulation:
         x = self._xmargin + actor.pos[0]*self._env_size - ACTOR_IMAGE_SIZE//2
         y = self._ymargin + self._env_size - actor.pos[1]*self._env_size - ACTOR_IMAGE_SIZE//2
 
-        Simulation.blitRotateCenter( surf=self.screen, image=self.actor_image, topleft=(x,y), angle=actor.orientation)
+        Simulation.blitRotateCenter(surf=self.screen, image=self.actor_image, topleft=(x, y), angle=actor.orientation)
 
     def _plot_tasks(self):
         """_summary_
@@ -365,6 +364,21 @@ class Simulation:
                     self._get_location_on_screen(last_task.location),
                     self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
                 last_task = task
+
+    def _draw_all_roads(self):
+        try:
+            paths = self.generator.paths
+        except NameError:
+            return  # Nothing to draw
+
+        for path_set in paths:
+            for path in path_set:
+                if path is None:
+                    continue
+                screen_path = []
+                for point in path:
+                    screen_path.append(self._get_location_on_screen(point))
+                pygame.draw.lines(self.screen, BACKGROUND_PATH_COLOUR, closed=False, points=screen_path, width=BACKGROUND_PATH_WIDTH)
 
     def _show_sim_info(self):
         try:
@@ -540,6 +554,9 @@ class Simulation:
         if self.screen is not None:
             #  draw the limits of the environment
             self.screen.fill(SCREEN_BACKGROUND_COLOUR)
+
+            # draw the map if there is one
+            self._draw_all_roads()
 
             self._plot_tasks()
 

@@ -82,7 +82,7 @@ def simulate(args, delivery_log=None):
         delivery_log=delivery_log
     )
 
-    if args.seed is not None:
+    if args.seed is not None and args.data_source is None:
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
