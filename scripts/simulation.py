@@ -60,7 +60,7 @@ class Simulation:
         self.current_sector = self.field.next_sector()
 
         # art objects
-        self.actor_image = pygame.image.load( 'assets/quad.svg' )
+        self.actor_image = pygame.image.load( 'assets/car.svg' )
         self.actor_image = pygame.transform.scale( self.actor_image, (ACTOR_IMAGE_SIZE,ACTOR_IMAGE_SIZE))
 
         # load the policy
@@ -262,7 +262,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 300.0
+        max_lateness = 600.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -282,7 +282,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 10,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
                     outlines=False
                 )
                 # elapsed_time_text = self.elapsed_time_text.render(
@@ -301,7 +301,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 10,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
                     outlines=True
                 )
 
