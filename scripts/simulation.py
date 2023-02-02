@@ -59,8 +59,8 @@ class Simulation:
         self.current_sector = self.field.next_sector()
 
         # art objects
-        self.actor_image = pygame.image.load( 'assets/car.svg' )
-        self.actor_image = pygame.transform.scale( self.actor_image, (ACTOR_IMAGE_SIZE,ACTOR_IMAGE_SIZE))
+        self.actor_image = pygame.image.load('assets/car.svg')
+        self.actor_image = pygame.transform.scale(self.actor_image, (ACTOR_IMAGE_SIZE, ACTOR_IMAGE_SIZE))
 
         # load the policy
         self.load_policy(policy_name=policy_name, policy_args=policy_args)
@@ -312,6 +312,16 @@ class Simulation:
         text = self.status_font.render(var_str, False, STATUS_FONT_COLOUR)
         self.screen.blit(text, (x_avg_offset+STATUS_XMARGIN/3, y_avg_offset+text_height*2+STATUS_YMARGIN*1.6))
 
+    def _draw_actor_depot(self, actor):
+        pos = self._get_location_on_screen(actor.depot)
+
+        pygame.draw.rect(self.screen,
+                         DEPOT_BACKGROUND_COLOUR,
+                         (pos[0]-DEPOT_SIZE//2, pos[1]-DEPOT_SIZE//2, DEPOT_SIZE, DEPOT_SIZE), 0)
+        pygame.draw.rect(self.screen,
+                         DEPOT_OUTLINE_COLOUR,
+                         (pos[0]-DEPOT_SIZE//2, pos[1]-DEPOT_SIZE//2, DEPOT_SIZE, DEPOT_SIZE), 0)
+
     def _draw_actor_path(self, actor):
         # path = actor.path
         # actor_loc_screen = self._get_location_on_screen(actor.pos)
@@ -320,19 +330,24 @@ class Simulation:
 
             # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
             # the actor's depot
-            path = []
-            last_index = actor.path_start_index
-            if last_index is not None:
-                for task in actor.complete_path:
-                    leg = self.generator.paths[last_index, task.index]
-                    if leg is not None:
-                        for point in leg:
-                            path.append(self._get_location_on_screen(point))
-                    path.append( self._get_location_on_screen(task.location) )
-                    last_index = task.index
+            try:
+                path = []
+                last_index = actor.path_start_index
+                if last_index is not None:
+                    for task in actor.complete_path:
+                        leg = self.generator.paths[last_index, task.index]
+                        if leg is not None:
+                            for point in leg:
+                                path.append(self._get_location_on_screen(point))
+                        path.append(self._get_location_on_screen(task.location))
+                        last_index = task.index
 
-            if len(path) > 2:
-                pygame.draw.lines( self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
+                if len(path) > 2:
+                    pygame.draw.lines(self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
+
+            except AttributeError:
+                # probably no data for intersections in the database -- ignore it all
+                pass
 
         # if len(path) > 1:
         #     pygame.draw.line(
@@ -353,7 +368,7 @@ class Simulation:
     def _draw_all_roads(self):
         try:
             paths = self.generator.paths
-        except NameError:
+        except AttributeError:
             return  # Nothing to draw
 
         for path_set in paths:
@@ -558,6 +573,7 @@ class Simulation:
 
             for actor in self.actor_list:
                 self._draw_actor_path(actor)
+                self._draw_actor_depot(actor)
                 self._draw_actor(actor)
 
             self._draw_status()

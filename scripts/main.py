@@ -156,11 +156,12 @@ def multiple_sims(args):
     delivery_log.write('id,px,py,t_arrive,t_service\n')
     delivery_log.flush()
 
-    # estimate the pending queue (overwrite whatever is passed in)
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        # estimate the pending queue based on lambda
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     for seed in seeds:
         args.seed = seed

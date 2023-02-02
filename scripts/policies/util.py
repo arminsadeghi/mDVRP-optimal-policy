@@ -167,7 +167,14 @@ def assign_time_tour_to_actor(actor, tasks, distances, tours, task_indices, eta=
 
     # store the complete path as well for visualization purposes
     actor.complete_path = []
-    for index in tour[1:]:
+    if tour_step > 0:
+        tour_start = 1
+        tour_end = len(tour)
+    else:
+        tour_start = len(tour)-1
+        tour_end = 0
+    for _i in range(tour_start, tour_end, tour_step):
+        index = tour[_i]
         task_index = task_indices[index]
         actor.complete_path.append(tasks[task_index])
     actor.complete_path.append(Task(

@@ -57,11 +57,11 @@ class DataLoader():
         full_index = pivot_df.index.union(pivot_df.columns)
         self.distances = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0.0).to_numpy()
 
-        pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
-        full_index = pivot_df.index.union(pivot_df.columns)
-        self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
-
         if len(self.tasks) < 50:
+            pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
+            full_index = pivot_df.index.union(pivot_df.columns)
+            self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
+
             # TODO: LIMITING mapping to less than 50 destinations -- gets pretty busy otherwise...
             for r in range(self.paths.shape[0]):
                 for c in range(self.paths.shape[1]):
