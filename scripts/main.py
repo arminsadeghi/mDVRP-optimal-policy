@@ -1,5 +1,4 @@
 import argparse
-from importlib.metadata import distribution
 from random import seed
 from simulation import Simulation
 from config import *
@@ -45,17 +44,23 @@ def simulate(args, delivery_log=None):
         args.total_tasks = args.max_tasks
 
     # override initial tasks
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+
+    if args.data_source is not None:
+        args.actors = None
 
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
     generator_args['initial_tasks'] = args.initial_tasks
+    generator_args['max_initial_wait'] = args.max_initial_wait
     generator_args['total_tasks'] = args.total_tasks
+    generator_args['data_source'] = args.data_source
 
     sim = Simulation(
         policy_name=args.policy,
@@ -75,10 +80,11 @@ def simulate(args, delivery_log=None):
         max_time=args.max_time,
         record_data=args.record_data,
         sectors=args.sectors,
+        centralized=args.centralized,
         delivery_log=delivery_log
     )
 
-    if args.seed is not None:
+    if args.seed is not None and args.data_source is None:
         if not path.isdir(TASKS_DIR):
             mkdir(TASKS_DIR)
 
@@ -256,7 +262,12 @@ if __name__ == "__main__":
         '--initial-tasks',
         default=0,
         type=int,
-        help='Pending tasks at the start of the simulation (t=0)')
+        help='Pending tasks at the start of the simulation (t=0).  If -1, waiting tasks will be scaled relative to lambda.')
+    argparser.add_argument(
+        '--max-initial-wait',
+        default=SERVICE_TIME,
+        type=float,
+        help='Initial tasks will have a waiting time randomly drawn from [0,max).')
     argparser.add_argument(
         '--load-tasks',
         action='store_true',
@@ -267,12 +278,12 @@ if __name__ == "__main__":
         type=float,
         help='Service time on arrival at each node')
     argparser.add_argument(
-        '--simulation_speed',
+        '--simulation-speed',
         default=SIMULATION_SPEED,
         type=float,
         help='Simulator speed')
     argparser.add_argument(
-        '-t', '--tick_time',
+        '-t', '--tick-time',
         default=TICK_TIME,
         type=float,
         help='Length of Simulation Time Step')
@@ -301,6 +312,10 @@ if __name__ == "__main__":
         action='store_true',
         help='Record data to disk as frames')
     argparser.add_argument(
+        '--centralized',
+        action='store_true',
+        help='Set up one depot in the centre of the map')
+    argparser.add_argument(
         '--show-sim',
         action='store_true',
         help='Display the simulation window')
@@ -312,6 +327,10 @@ if __name__ == "__main__":
         '--multipass',
         action='store_true',
         help='Run the simulation over multiple lambda and seeds')
+    argparser.add_argument(
+        '--data-source',
+        default=None,
+        help='CSV file containing task locations. Durations/Distances are loaded from a companion file, <data-source root>.distances.csv.  If the distance file is unavailable, euclidean distances are used instead')
 
     args = argparser.parse_args()
 

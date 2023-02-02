@@ -25,7 +25,7 @@ def prep_tour(tasks):
     return pending_tasks, task_indices
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
+def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
     """tsp policy
 
     Args:
@@ -47,5 +47,6 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
 
     tours = solve_tsp('DVR TSP', 'Distance between Pending Tasks', idle_actors[0].pos, tasks, scale_factor=10000.0)
 
-    assign_tours_to_actors(idle_actors, tasks, tours, task_indices, eta=eta)
+    assign_tours_to_actors([idle_actors[0],], tasks, tours, task_indices, eta=eta, eta_first=eta_first)
+
     return False

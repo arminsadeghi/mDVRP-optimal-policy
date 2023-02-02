@@ -10,15 +10,14 @@ from importlib import import_module
 from math import sqrt, exp
 import numpy as np
 
-from centroid import Field, Sector
+from Field import Field, Sector
 import colorsys
 
 
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, delivery_log=None):
-        self.num_actors = num_actors
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, centralized=False, delivery_log=None):
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
         self.screen = screen
@@ -39,15 +38,29 @@ class Simulation:
 
         self.delivery_log = delivery_log
 
-        # split the environment...
-        self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
-        self.centre = [0.5, 0.5]
-        self.sectors = sectors
-        self.field = Field(self.vertices, self.centre, self.sectors)
-        self.current_sector = self.field.next_sector()
-
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
+
+        if num_actors:
+            # split the environment...
+            self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
+            self.centre = [0.5, 0.5]
+            self.num_sectors = sectors
+            self.field = Field(self.vertices, self.centre, self.num_sectors)
+
+            self.num_actors = num_actors
+            self.centralized = centralized
+        else:
+            self.centralized = False
+            self.field = self.generator.field
+            self.num_actors = self.field.count
+            self.num_sectors = self.field.count
+
+        self.current_sector = self.field.next_sector()
+
+        # art objects
+        self.actor_image = pygame.image.load( 'assets/car.svg' )
+        self.actor_image = pygame.transform.scale( self.actor_image, (ACTOR_IMAGE_SIZE,ACTOR_IMAGE_SIZE))
 
         # load the policy
         self.load_policy(policy_name=policy_name, policy_args=policy_args)
@@ -56,14 +69,31 @@ class Simulation:
         self.reset()
 
     def reset(self, task_list=None):
-        self.actor_list = [
-            Actor(
+
+        if not self.centralized and self.num_actors != self.num_sectors:
+            raise ValueError("ERROR: The number of actors must equal the number of sectors for non-central service!")
+
+        self.actor_list = []
+        for i in range(self.num_actors):
+            if self.centralized:
+                pos = [0.5, 0.5]
+                depot = pos
+                sector = 0
+            else:
+                sector = i
+                pos = self.field.sectors[sector].get_centroid()
+                depot = pos
+
+            self.actor_list.append(Actor(
                 id=i+1,
-                pos=[0.5, 0.5],
+                pos=pos,
+                sector=sector,
+                depot=depot,
                 service_time=self.service_time,
                 speed=self.actor_speed,
+                euclidean=self.generator.is_euclidean(),
                 screen=self.screen
-            ) for i in range(self.num_actors)]
+            ))
 
         self.serviced_tasks = []
         self.sim_time = 0.
@@ -190,27 +220,18 @@ class Simulation:
                                SCREEN_OUTLINE_COLOUR,
                                (location[0], location[1]), size, 2)
 
+    # Quick image rotation
+    #   https://stackoverflow.com/questions/4183208/how-do-i-rotate-an-image-around-its-center-using-pygame
+    @staticmethod
+    def blitRotateCenter(surf, image, topleft, angle):
+        rotated_image = pygame.transform.rotate(image, np.rad2deg(angle))
+        new_rect = rotated_image.get_rect(center=image.get_rect(topleft=topleft).center)
+        surf.blit(rotated_image, new_rect)
+
     def _draw_actor(self, actor):
-        rot = np.array(
-            [
-                [np.cos(actor.orientation), np.sin(actor.orientation)],
-                [-np.sin(actor.orientation), np.cos(actor.orientation)],
-            ]
-        )
-
-        pts = np.array([
-            [5, 0],
-            [-5, 4],
-            [-2, 0],
-            [-5, -4],
-            [5, 0],
-        ]) * 5
-
-        pts = ((rot @ pts.T) + np.array([self._xmargin + actor.pos[0]*self._env_size,
-                                         self._ymargin + self._env_size - actor.pos[1]*self._env_size]).reshape([2, 1])).T
-
-        pygame.draw.polygon(self.screen, ACTOR_COLOUR, pts, 0)
-        pygame.draw.polygon(self.screen, SCREEN_OUTLINE_COLOUR, pts, ACTOR_PATH_WIDTH)
+        x = self._xmargin + actor.pos[0]*self._env_size - ACTOR_IMAGE_SIZE//2
+        y = self._ymargin + self._env_size - actor.pos[1]*self._env_size - ACTOR_IMAGE_SIZE//2
+        Simulation.blitRotateCenter(surf=self.screen, image=self.actor_image, topleft=(x, y), angle=actor.orientation)
 
     def _plot_tasks(self):
         """_summary_
@@ -218,7 +239,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 30.0
+        max_lateness = 600.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -238,7 +259,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 10,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
                     outlines=False
                 )
                 # elapsed_time_text = self.elapsed_time_text.render(
@@ -257,7 +278,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 10,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
                     outlines=True
                 )
 
@@ -269,7 +290,8 @@ class Simulation:
             avg = self._avg_served_time/len(self.serviced_tasks)
         total_str = f'Serviced: {len(self.serviced_tasks)}'
         avg_str = f"Average Wait: {avg:5.2f}"
-        var_str = f"Variance: {self.calculate_variance():5.2f}"
+        # var_str = f"Variance: {self.calculate_variance():5.2f}"
+        var_str = f"Max Wait: {self._max_served_time:5.2f}"
 
         text_width, text_height = self.status_font.size(avg_str)
 
@@ -291,35 +313,57 @@ class Simulation:
         self.screen.blit(text, (x_avg_offset+STATUS_XMARGIN/3, y_avg_offset+text_height*2+STATUS_YMARGIN*1.6))
 
     def _draw_actor_path(self, actor):
-        path = actor.path
-        actor_loc_screen = self._get_location_on_screen(actor.pos)
+        # path = actor.path
+        # actor_loc_screen = self._get_location_on_screen(actor.pos)
 
         if len(actor.complete_path) > 1:
-            last_task = actor.complete_path[0]
-            for task in actor.complete_path[1:-1]:
-                if task.id < 0:
-                    continue
-                pygame.draw.line(
-                    self.screen, ACTOR_COMPLETE_PATH_COLOUR,
-                    self._get_location_on_screen(last_task.location),
-                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
-                last_task = task
 
-        if len(path) > 1:
-            pygame.draw.line(
-                self.screen, ACTOR_PATH_COLOUR,
-                actor_loc_screen,
-                self._get_location_on_screen(actor.path[0].location), ACTOR_PATH_WIDTH)
+            # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
+            # the actor's depot
+            path = []
+            last_index = actor.path_start_index
+            if last_index is not None:
+                for task in actor.complete_path:
+                    leg = self.generator.paths[last_index, task.index]
+                    if leg is not None:
+                        for point in leg:
+                            path.append(self._get_location_on_screen(point))
+                    path.append( self._get_location_on_screen(task.location) )
+                    last_index = task.index
 
-            last_task = actor.path[0]
-            for task in actor.path[1:-1]:
-                if task.id < 0:
+            if len(path) > 2:
+                pygame.draw.lines( self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
+
+        # if len(path) > 1:
+        #     pygame.draw.line(
+        #         self.screen, ACTOR_PATH_COLOUR,
+        #         actor_loc_screen,
+        #         self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
+
+        #     last_task = actor.path[0][0]
+        #     for task, _ in actor.path[1:-1]:
+        #         if task.id < 0:
+        #             continue
+        #         pygame.draw.line(
+        #             self.screen, ACTOR_PATH_COLOUR,
+        #             self._get_location_on_screen(last_task.location),
+        #             self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
+        #         last_task = task
+
+    def _draw_all_roads(self):
+        try:
+            paths = self.generator.paths
+        except NameError:
+            return  # Nothing to draw
+
+        for path_set in paths:
+            for path in path_set:
+                if path is None:
                     continue
-                pygame.draw.line(
-                    self.screen, ACTOR_PATH_COLOUR,
-                    self._get_location_on_screen(last_task.location),
-                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
-                last_task = task
+                screen_path = []
+                for point in path:
+                    screen_path.append(self._get_location_on_screen(point))
+                pygame.draw.lines(self.screen, BACKGROUND_PATH_COLOUR, closed=False, points=screen_path, width=BACKGROUND_PATH_WIDTH)
 
     def _show_sim_info(self):
         try:
@@ -408,9 +452,9 @@ class Simulation:
             self.delivery_log.write(self.task_list[rval.id].to_string()+'\n')
             self.delivery_log.flush()
 
-        # if the actor is now idle, move to the next sector
-        if not self.actor_list[0].is_busy():
-            self.current_sector = self.field.next_sector()
+        # # if the actor is now idle, move to the next sector
+        # if not self.actor_list[0].is_busy():
+        #     self.current_sector = self.field.next_sector()
 
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
@@ -434,37 +478,52 @@ class Simulation:
             print("[{:.2f}]: New task arrived at location {}".format(round(self.sim_time, 2), self.task_list[self.next_task].location))
             self.next_task += 1
 
+        # TODO: The selection of the next policy, and the target of the Actor(s) should really be in the policy, not here in
+        #       the simulation code.
+        #
         # if the actor is idle
-        if not self.actor_list[0].is_busy():
+        for actor in self.actor_list:
+            if not actor.is_busy():
 
-            # check if we need to update the actor's target
-            if self.current_sector.is_near_centre(self.actor_list[0].pos):
-                self.current_sector = self.field.next_sector()
+                sector_tasks = []
+                if self.centralized:
+                    for _ in range(self.num_sectors):
+                        for task in self.task_list:
+                            if self.sim_time < task.time:
+                                break
 
-            sector_tasks = []
-            # go through the task list and assign tasks (this is going to be the slow way...)
-            for _ in range(self.sectors):
-                for task in self.task_list:
-                    if self.sim_time < task.time:
-                        break
+                            if not task.is_pending():
+                                continue
 
-                    if task.is_pending():
-                        if self.current_sector.is_mine(task.location):
+                            if self.current_sector.contains(task.sector):
+                                sector_tasks.append(task)
+
+                        if len(sector_tasks):
+                            print("[{:.2f}]: Currently {} tasks pending for sector {}".format(
+                                round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
+                            break
+
+                        # nothing in this sector, check the next
+                        self.current_sector = self.field.next_sector()
+
+                else:
+                    for task in self.task_list:
+                        if self.sim_time < task.time:
+                            break
+
+                        if not task.is_pending():
+                            continue
+
+                        if actor.sector == task.sector:
                             sector_tasks.append(task)
 
                 if len(sector_tasks):
-                    print("[{:.2f}]: Currently {} tasks pending for sector {}".format(round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
-                    break
+                    self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
+                                 cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
 
-                # nothing in this sector, check the next
-                self.current_sector = self.field.next_sector()
-
-            if len(sector_tasks):
-                self._policy(actors=self.actor_list, tasks=sector_tasks, current_time=self.sim_time, service_time=self.service_time,
-                             cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
-            else:
-                target = self.centre  # self.current_sector.get_centroid()
-                self.actor_list[0].path = [Task(-1, target, -1)]
+                    if self.centralized:
+                        # assigned this sector, moving on...
+                        self.current_sector = self.field.next_sector()
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
@@ -480,6 +539,9 @@ class Simulation:
         if self.screen is not None:
             #  draw the limits of the environment
             self.screen.fill(SCREEN_BACKGROUND_COLOUR)
+
+            # draw the map if there is one
+            self._draw_all_roads()
 
             self._plot_tasks()
 
@@ -503,7 +565,7 @@ class Simulation:
             if self.record_data:
                 eta_str = str(self.eta) + 'e_f' if self.eta_first else 'e'
                 pygame.image.save(
-                    self.screen, f'images/screen_{self.policy_name}_{self.sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
+                    self.screen, f'images/screen_{self.policy_name}_{self.num_sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
 
         # if self._show_sim:
         #     self._show_sim_info()

@@ -1,0 +1,148 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/thirdParty/lkh/LKH-3.0.7/LKH",
+            "args": [
+                "/tmp/tmpk5xhttdv"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            // "justMyCode": true,
+            "cwd": "${workspaceFolder}/scripts"
+        },
+        {
+            "name": "Python: Main",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/scripts",
+            "args": [
+                "--actors",
+                "5",
+                "--policy",
+                // "quad_wait_tsp",
+                "lkh_batch_tsp_time",
+                "--show-sim",
+                // "--record-data",
+                "--tick-time",
+                "1",
+                "--max-tasks",
+                "2000",
+                "--total-tasks",
+                "3000",
+                "--initial-tasks",
+                "5",
+                "--max-initial-wait",
+                "800",
+                "--service-time",
+                "15.0",
+                "--cost-exponent",
+                "1.5",
+                "--seed",
+                "223",
+                "--lambd",
+                "0.01",
+                "--generator",
+                "data_loader",
+                // "bad_business",
+                // "--multipass",
+                // "--gamma",
+                // "0.99",
+                // "--eta",
+                // "0.2",
+                // "--eta-first",
+                "--sectors",
+                "5",
+                "--data-source",
+                "data/montreal_nord-2017_2019-5-1.clustered.csv",
+                // "--centralized",
+            ]
+        },
+        {
+            "name": "Python: process311",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/process311.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--input",
+                "/home/bjgilhul/Downloads/requetes311_2017-2019.csv"
+            ]
+        },
+        {
+            "name": "Python: CreateDataset",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/create_311_dataset.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--input",
+                "/home/bjgilhul/Downloads/requetes311_2017-2019.filtered.csv",
+                "--seed",
+                "42",
+                // "--key",
+                // "blahblah",
+            ]
+        },
+        {
+            "name": "Python: Pathos",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/pathos.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
+            "name": "Python: load",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/load_vis.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
+            "name": "Python: Gauss",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/generators/bimod_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        }
+    ]
+}
