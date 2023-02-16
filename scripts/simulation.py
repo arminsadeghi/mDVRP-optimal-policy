@@ -193,7 +193,11 @@ class Simulation:
         are inserting one now.
         """
 
-        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda)
+        # TODO: Bit of a chicken and egg thing going on here as the field is created by the generator
+        #       in the data_loader case, but here otherwise.  But the generator apparently needs the 
+        #       field to place tasks in their appropriate sector.  Passing it back in for now, and the
+        #       data_loader can just ignore it...
+        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda, self.field)
         # create an index into the list of tasks
         self.next_task = 0
 
@@ -432,6 +436,111 @@ class Simulation:
         #     "Actor {:d} - Pos: ({:03.2f}{:03.2f}) - Dist: {: 5.3f}".format(actor_index + 1, actor.pos[0], actor.pos[1], actor.travel_dist), False, (255, 255, 255))
         # self.screen.blit(sim_time_text, (10, 40 + actor_index*20))
 
+    def plot_initial_conditions(self):
+
+            import matplotlib.pyplot as plt
+            import matplotlib.path as mpath
+            import matplotlib.patches as mpatches
+
+            # width as measured in inkscape
+            width = 8  # 3.487
+            height = width / 1.5
+
+            plt.rc('font', family='serif', serif='Times')
+            plt.rc('text', usetex=True)
+            plt.rc('xtick', labelsize=12)
+            plt.rc('ytick', labelsize=12)
+            plt.rc('axes', labelsize=12)
+
+            scale = 1000.0
+
+            fig, ax = plt.subplots()
+            ax.set_xlim((-20,scale+100))
+            ax.set_ylim((-20,scale+100))
+            ax.axis('off')
+            ax.axis('equal')
+
+            edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
+
+            # self._draw_all_roads()
+            try:
+                paths = self.generator.paths
+                for path_set in paths:
+                    for path in path_set:
+                        if path is None:
+                            continue
+                        screen_path = [(path[0][0]*scale, path[0][1]*scale)]
+                        screen_codes = [mpath.Path.MOVETO]
+                        for point in path[1:]:
+                            screen_path.append((point[0]*scale, point[1]*scale))
+                            screen_codes.append(mpath.Path.LINETO)
+
+                        screen_path = mpath.Path(screen_path, screen_codes)
+                        patch = mpatches.PathPatch(screen_path, edgecolor=edge_colour, facecolor='none', lw=BACKGROUND_PATH_WIDTH )
+                        ax.add_patch(patch)
+            except AttributeError:
+                pass 
+
+            # self._plot_tasks()
+            INITIAL_TASK_SIZE = 10
+            max_lateness = 600.0
+            for task in self.task_list[::-1]:
+
+                if task.service_state is ServiceState.SERVICED:
+                    continue
+
+                if task.time <= self.sim_time:
+                    lateness = min(max_lateness, self.sim_time - task.time)
+
+                    hue = 120.0/360.0 * (max_lateness - lateness) / max_lateness
+                    r, g, b = colorsys.hls_to_rgb(h=hue, l=0.5, s=0.99)
+
+                    circle = mpatches.Circle( (task.location[0]*scale, task.location[1]*scale), INITIAL_TASK_SIZE + sqrt(lateness) * 2, ec=(0,0,0,0.5), fc=(r,g,b,0.5))
+                    ax.add_patch(circle)
+
+            for actor in self.actor_list:
+
+                # self._draw_actor_path(actor)
+                if len(actor.complete_path) > 1:
+
+                    # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
+                    # the actor's depot
+                    screen_path = []
+                    screen_codes = []
+
+                    edge_colour = [c/255.0 for c in ACTOR_PATH_COLOUR]
+
+                    last_index = actor.path_start_index
+                    if last_index is not None:
+                        for task in actor.complete_path:
+                            leg = self.generator.paths[last_index, task.index]
+                            if leg is not None:
+                                for point in leg:
+                                    screen_path.append((point[0]*scale, point[1]*scale))
+                                    screen_codes.append(mpath.Path.LINETO)
+                            last_index = task.index
+
+                        screen_codes[0] = mpath.Path.MOVETO
+
+                    if len( screen_path ):
+                        screen_path = mpath.Path(screen_path, screen_codes)
+                        patch = mpatches.PathPatch(screen_path, facecolor='none', edgecolor=edge_colour, lw=ACTOR_PATH_WIDTH )
+                        ax.add_patch(patch)
+                          
+                # self._draw_actor_depot(actor)
+                edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
+                face_colour = [c/255.0 for c in DEPOT_BACKGROUND_COLOUR]
+                rect = mpatches.Rectangle((actor.depot[0]*scale-DEPOT_SIZE//2, actor.depot[1]*scale-DEPOT_SIZE//2), width=DEPOT_SIZE, height=DEPOT_SIZE, ec=edge_colour, fc=face_colour)
+                ax.add_patch(rect)
+                
+                # self._draw_actor(actor)
+            
+            fig.set_size_inches(width, height)
+            fig.savefig(f'initial_conditions.pdf')
+
+            plt.show(block=True)
+
+
     ##################################################################################
     # Simulator step functions
     ##################################################################################
@@ -588,6 +697,9 @@ class Simulation:
                 self._draw_actor(actor)
 
             self._draw_status()
+
+            if self.sim_time == tick_time:
+                self.plot_initial_conditions()
 
             if self.record_data:
                 eta_str = str(self.eta) + 'ef' if self.eta_first else str(self.eta) + 'e'

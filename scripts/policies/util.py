@@ -108,9 +108,9 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=
             index = tours[actor_index][_i]
             task_index = task_indices[index]
             tasks[task_index].service_state = ServiceState.ASSIGNED
-            actors[actor_index].path.append(tasks[task_index], None)
+            actors[actor_index].path.append((tasks[task_index], None))
 
-        actors[actor_index].path.append(Task(-1, actors[actor_index].get_depot(), -1), None)
+        actors[actor_index].path.append((Task(-1, actors[actor_index].get_depot(), -1), None))
 
         # store the complete path as well for visualization purposes
         for index in tours[actor_index][1:]:

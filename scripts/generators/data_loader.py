@@ -80,7 +80,7 @@ class DataLoader():
         row = self.tasks.iloc[row_index]
         return row_index, (row['X'], row['Y']), row['CLUSTER']
 
-    def draw_tasks(self, lam):
+    def draw_tasks(self, lam, field=None):
 
         # TODO: Replace calls to expovariate with an appropriate replacement that uses
         #       the internal generator

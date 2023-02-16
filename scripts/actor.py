@@ -98,7 +98,7 @@ class Actor:
 
             if (len(self.path) >= 1):
                 print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.path[0][0].location))
-                self.servicing = self.path.pop(0)
+                self.servicing, _ = self.path.pop(0)
                 self.servicing.service_state = ServiceState.IN_SERVICE
                 self.time_arrived = sim_time
 
