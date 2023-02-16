@@ -56,6 +56,7 @@ class DataLoader():
         pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
         full_index = pivot_df.index.union(pivot_df.columns)
         self.distances = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0.0).to_numpy()
+        self.mean_distance = distance_df['TRAVEL_TIME'].mean()
 
         if len(self.tasks) < 50:
             pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
@@ -94,7 +95,8 @@ class DataLoader():
                 id=len(tasks),
                 location=location,
                 sector=sector,
-                time=self.gen.uniform()*self.max_initial_wait * -1,   # initial tasks are from before clock start
+                time=0,
+                initial_wait=self.gen.uniform()*self.max_initial_wait,
                 index=task_index,
                 # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
@@ -109,8 +111,9 @@ class DataLoader():
                 id=len(tasks),
                 location=location,
                 sector=sector,
-                index=task_index,
                 time=sim_time,
+                initial_wait=self.gen.uniform()*self.max_initial_wait,
+                index=task_index,
                 # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
             )
