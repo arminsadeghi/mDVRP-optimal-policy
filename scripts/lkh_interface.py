@@ -63,7 +63,7 @@ def solve_time_tsp(name, comment, distances, scale_factor=1.0):
     return path
 
 
-def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_time=0, scale_factor=1.0):
+def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_time=0, cost_exponent=1, scale_factor=1.0):
 
     N = 1
     position_scale = scale_factor  # * 100
@@ -78,7 +78,7 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
             N += 1
             node_coord_str += str(N) + ' ' + str(int(task.location[0] * position_scale)) + ' ' + str(int(task.location[1] * position_scale)) + '\n'
             service_time_str += str(N) + ' ' + str(mean_service_time * scale_factor) + '\n'
-            demand_str += str(N) + ' ' + str(int((simulation_time - task.time) * scale_factor)) + '\n'
+            demand_str += str(N) + ' ' + str(int((simulation_time - task.time + task.initial_wait) * scale_factor)) + '\n'
 
     if N < 3:
         return ([[2], ])
@@ -88,7 +88,9 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
     tsp_str += 'TYPE: TRP\n'
     tsp_str += 'COMMENT: ' + comment + '\n'
     tsp_str += 'DIMENSION: ' + str(N) + '\n'
+    tsp_str += 'RISK_THRESHOLD: ' + str(int(cost_exponent*10)) + '\n'
     tsp_str += 'EDGE_WEIGHT_TYPE: EUC_2D\n'
+    # repurposing risk threshold for the cost exponent
     tsp_str += node_coord_str
     tsp_str += service_time_str
     tsp_str += demand_str
@@ -103,7 +105,7 @@ def solve_trp(name, comment, start_pos, tasks, simulation_time, mean_service_tim
     return path
 
 
-def solve_time_trp(name, comment, tasks, distances, simulation_time, mean_service_time=0, scale_factor=1.0):
+def solve_time_trp(name, comment, tasks, distances, simulation_time, mean_service_time=0, cost_exponent=1, scale_factor=1.0):
 
     N = distances.shape[0]
     if N < 3:
@@ -119,16 +121,18 @@ def solve_time_trp(name, comment, tasks, distances, simulation_time, mean_servic
     # repurposing demand to account for built-up wait
     demand_str = 'DEMAND_SECTION: \n' + '1 0\n'  # no waiting at the depot
     for n, task in enumerate(tasks):
-        demand_str += f'{n+2} {int((simulation_time - task.time) * scale_factor)}\n'
+        demand_str += f'{n+2} {int((simulation_time - task.time + task.initial_wait) * scale_factor)}\n'
 
     tsp_str = ""
     tsp_str += 'NAME: ' + name + '\n'
     tsp_str += 'TYPE: TRP\n'
     tsp_str += 'COMMENT: ' + comment + '\n'
     tsp_str += 'DIMENSION: ' + str(N) + '\n'
+    tsp_str += 'RISK_THRESHOLD: ' + str(int(cost_exponent*10)) + '\n'
     tsp_str += 'EDGE_WEIGHT_TYPE: EXPLICIT\n'
     tsp_str += 'EDGE_WEIGHT_FORMAT: FULL_MATRIX\n'
     tsp_str += 'EDGE_WEIGHT_SECTION: \n'
+    # repurpose RISK_THRESHOLD to pass in cost exponent, multiply by 10 so it goes as an INT
     tsp_str += distance_str + '\n'
     tsp_str += service_time_str + '\n'
     tsp_str += demand_str + '\n'
