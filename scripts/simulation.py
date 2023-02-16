@@ -191,7 +191,11 @@ class Simulation:
         are inserting one now.
         """
 
-        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda)
+        # TODO: Bit of a chicken and egg thing going on here as the field is created by the generator
+        #       in the data_loader case, but here otherwise.  But the generator apparently needs the 
+        #       field to place tasks in their appropriate sector.  Passing it back in for now, and the
+        #       data_loader can just ignore it...
+        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda, self.field)
         # create an index into the list of tasks
         self.next_task = 0
 
@@ -448,20 +452,23 @@ class Simulation:
             edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
 
             # self._draw_all_roads()
-            paths = self.generator.paths
-            for path_set in paths:
-                for path in path_set:
-                    if path is None:
-                        continue
-                    screen_path = [(path[0][0]*scale, path[0][1]*scale)]
-                    screen_codes = [mpath.Path.MOVETO]
-                    for point in path[1:]:
-                        screen_path.append((point[0]*scale, point[1]*scale))
-                        screen_codes.append(mpath.Path.LINETO)
+            try:
+                paths = self.generator.paths
+                for path_set in paths:
+                    for path in path_set:
+                        if path is None:
+                            continue
+                        screen_path = [(path[0][0]*scale, path[0][1]*scale)]
+                        screen_codes = [mpath.Path.MOVETO]
+                        for point in path[1:]:
+                            screen_path.append((point[0]*scale, point[1]*scale))
+                            screen_codes.append(mpath.Path.LINETO)
 
-                    screen_path = mpath.Path(screen_path, screen_codes)
-                    patch = mpatches.PathPatch(screen_path, edgecolor=edge_colour, facecolor='none', lw=BACKGROUND_PATH_WIDTH )
-                    ax.add_patch(patch)
+                        screen_path = mpath.Path(screen_path, screen_codes)
+                        patch = mpatches.PathPatch(screen_path, edgecolor=edge_colour, facecolor='none', lw=BACKGROUND_PATH_WIDTH )
+                        ax.add_patch(patch)
+            except AttributeError:
+                pass 
 
             # self._plot_tasks()
             INITIAL_TASK_SIZE = 10
@@ -504,11 +511,11 @@ class Simulation:
 
                         screen_codes[0] = mpath.Path.MOVETO
 
-                    screen_path = mpath.Path(screen_path, screen_codes)
-                    patch = mpatches.PathPatch(screen_path, facecolor='none', edgecolor=edge_colour, lw=ACTOR_PATH_WIDTH )
-                    ax.add_patch(patch)
-          
-                
+                    if len( screen_path ):
+                        screen_path = mpath.Path(screen_path, screen_codes)
+                        patch = mpatches.PathPatch(screen_path, facecolor='none', edgecolor=edge_colour, lw=ACTOR_PATH_WIDTH )
+                        ax.add_patch(patch)
+                          
                 # self._draw_actor_depot(actor)
                 edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
                 face_colour = [c/255.0 for c in DEPOT_BACKGROUND_COLOUR]
