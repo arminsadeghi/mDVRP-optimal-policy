@@ -116,6 +116,8 @@ class Simulation:
         else:
             self.task_list = task_list
 
+        self.rho = round((self.service_time + self.generator.mean_distance) * self.pois_lambda, 2)
+
     def load_policy(self, policy_name, policy_args):
         # load the policy
         self.policy_name = "{}_policy".format(policy_name)
@@ -239,7 +241,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 600.0
+        max_lateness = 1200.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -247,7 +249,7 @@ class Simulation:
 
             if task.time <= self.sim_time:
                 task_loc_screen = self._get_location_on_screen(task.location)
-                lateness = min(max_lateness, self.sim_time - task.time)
+                lateness = min(max_lateness, self.sim_time - task.time + task.initial_wait)
 
                 hue = 120.0/360.0 * (max_lateness - lateness) / max_lateness
                 r, g, b = colorsys.hls_to_rgb(h=hue, l=0.5, s=0.99)
@@ -262,9 +264,6 @@ class Simulation:
                     size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
                     outlines=False
                 )
-                # elapsed_time_text = self.elapsed_time_text.render(
-                #     str(round(self.sim_time - task.time, 2)), False, (r, g, b))
-                # self.screen.blit(elapsed_time_text, (task_loc_screen[0] + 20, task_loc_screen[1]))
 
         # TODO: transparancy isn't working for me -- workaround
         for task in self.task_list[::-1]:
@@ -272,7 +271,7 @@ class Simulation:
                 continue
 
             if task.time <= self.sim_time:
-                lateness = min(max_lateness, self.sim_time - task.time)
+                lateness = min(max_lateness, self.sim_time - task.time + task.initial_wait)
 
                 task_loc_screen = self._get_location_on_screen(task.location)
                 self._draw_task(
@@ -323,47 +322,59 @@ class Simulation:
                          (pos[0]-DEPOT_SIZE//2, pos[1]-DEPOT_SIZE//2, DEPOT_SIZE, DEPOT_SIZE), 0)
 
     def _draw_actor_path(self, actor):
-        # path = actor.path
-        # actor_loc_screen = self._get_location_on_screen(actor.pos)
+        path = actor.path
+        actor_loc_screen = self._get_location_on_screen(actor.pos)
 
         if len(actor.complete_path) > 1:
+            pygame.draw.line(
+                self.screen, ACTOR_COMPLETE_PATH_COLOUR,
+                actor_loc_screen,
+                self._get_location_on_screen(actor.complete_path[0].location), ACTOR_PATH_WIDTH)
 
-            # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
-            # the actor's depot
-            try:
-                path = []
-                last_index = actor.path_start_index
-                if last_index is not None:
-                    for task in actor.complete_path:
-                        leg = self.generator.paths[last_index, task.index]
-                        if leg is not None:
-                            for point in leg:
-                                path.append(self._get_location_on_screen(point))
-                        path.append(self._get_location_on_screen(task.location))
-                        last_index = task.index
+            last_task = actor.complete_path[0]
+            for task in actor.complete_path[1:-1]:
+                pygame.draw.line(
+                    self.screen, ACTOR_COMPLETE_PATH_COLOUR,
+                    self._get_location_on_screen(last_task.location),
+                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
+                last_task = task
 
-                if len(path) > 2:
-                    pygame.draw.lines(self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
+        #     # draw the complete path of the actor by looking up the waypoints and stuff -- always starting from
+        #     # the actor's depot
+        #     try:
+        #         path = []
+        #         last_index = actor.path_start_index
+        #         if last_index is not None:
+        #             for task in actor.complete_path:
+        #                 leg = self.generator.paths[last_index, task.index]
+        #                 if leg is not None:
+        #                     for point in leg:
+        #                         path.append(self._get_location_on_screen(point))
+        #                 path.append(self._get_location_on_screen(task.location))
+        #                 last_index = task.index
 
-            except AttributeError:
-                # probably no data for intersections in the database -- ignore it all
-                pass
+        #         if len(path) > 2:
+        #             pygame.draw.lines(self.screen, color=ACTOR_PATH_COLOUR, closed=False, points=path, width=ACTOR_PATH_WIDTH)
 
-        # if len(path) > 1:
-        #     pygame.draw.line(
-        #         self.screen, ACTOR_PATH_COLOUR,
-        #         actor_loc_screen,
-        #         self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
+        #     except AttributeError:
+        #         # probably no data for intersections in the database -- ignore it all
+        #         pass
 
-        #     last_task = actor.path[0][0]
-        #     for task, _ in actor.path[1:-1]:
-        #         if task.id < 0:
-        #             continue
-        #         pygame.draw.line(
-        #             self.screen, ACTOR_PATH_COLOUR,
-        #             self._get_location_on_screen(last_task.location),
-        #             self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
-        #         last_task = task
+        if len(path) > 1:
+            pygame.draw.line(
+                self.screen, ACTOR_PATH_COLOUR,
+                actor_loc_screen,
+                self._get_location_on_screen(actor.path[0][0].location), ACTOR_PATH_WIDTH)
+
+            last_task = actor.path[0][0]
+            for task, _ in actor.path[1:-1]:
+                if task.id < 0:
+                    continue
+                pygame.draw.line(
+                    self.screen, ACTOR_PATH_COLOUR,
+                    self._get_location_on_screen(last_task.location),
+                    self._get_location_on_screen(task.location), ACTOR_PATH_WIDTH)
+                last_task = task
 
     def _draw_all_roads(self):
         try:
@@ -457,7 +468,7 @@ class Simulation:
         self.serviced_tasks.append(rval.id)
 
         # record stats
-        time = self.sim_time - rval.time
+        time = rval.wait_time()
         self._avg_served_time += time
         if time > self._max_served_time:
             self._max_served_time = time
@@ -534,7 +545,7 @@ class Simulation:
 
                 if len(sector_tasks):
                     self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
-                                 cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first, gamma=self.gamma)
+                                 cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first)
 
                     if self.centralized:
                         # assigned this sector, moving on...
@@ -579,7 +590,7 @@ class Simulation:
             self._draw_status()
 
             if self.record_data:
-                eta_str = str(self.eta) + 'e_f' if self.eta_first else 'e'
+                eta_str = str(self.eta) + 'ef' if self.eta_first else str(self.eta) + 'e'
                 pygame.image.save(
                     self.screen, f'images/screen_{self.policy_name}_{self.num_sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
 
