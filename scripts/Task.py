@@ -23,6 +23,11 @@ class Task:
         self.service_time = service_time
 
     def is_pending(self):
+        if self.service_state == ServiceState.WAITING or self.service_state == ServiceState.ASSIGNED:
+            return True
+        return False
+
+    def is_waiting(self):
         if self.service_state == ServiceState.WAITING:  # or self.service_state == ServiceState.ASSIGNED:
             return True
         return False

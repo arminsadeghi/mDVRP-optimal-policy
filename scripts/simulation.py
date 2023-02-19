@@ -194,7 +194,7 @@ class Simulation:
         """
 
         # TODO: Bit of a chicken and egg thing going on here as the field is created by the generator
-        #       in the data_loader case, but here otherwise.  But the generator apparently needs the 
+        #       in the data_loader case, but here otherwise.  But the generator apparently needs the
         #       field to place tasks in their appropriate sector.  Passing it back in for now, and the
         #       data_loader can just ignore it...
         self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda, self.field)
@@ -438,67 +438,69 @@ class Simulation:
 
     def plot_initial_conditions(self):
 
-            import matplotlib.pyplot as plt
-            import matplotlib.path as mpath
-            import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
+        import matplotlib.path as mpath
+        import matplotlib.patches as mpatches
 
-            # width as measured in inkscape
-            width = 8  # 3.487
-            height = width / 1.5
+        # width as measured in inkscape
+        width = 8  # 3.487
+        height = width / 1.5
 
-            plt.rc('font', family='serif', serif='Times')
-            plt.rc('text', usetex=True)
-            plt.rc('xtick', labelsize=12)
-            plt.rc('ytick', labelsize=12)
-            plt.rc('axes', labelsize=12)
+        plt.rc('font', family='serif', serif='Times')
+        plt.rc('text', usetex=True)
+        plt.rc('xtick', labelsize=12)
+        plt.rc('ytick', labelsize=12)
+        plt.rc('axes', labelsize=12)
 
-            scale = 1000.0
+        scale = 1000.0
 
-            fig, ax = plt.subplots()
-            ax.set_xlim((-20,scale+100))
-            ax.set_ylim((-20,scale+100))
-            ax.axis('off')
-            ax.axis('equal')
+        fig, ax = plt.subplots()
+        ax.set_xlim((-20, scale+100))
+        ax.set_ylim((-20, scale+100))
+        ax.axis('off')
+        ax.axis('equal')
 
-            edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
+        edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
 
-            # self._draw_all_roads()
+        # self._draw_all_roads()
+        try:
+            paths = self.generator.paths
+            for path_set in paths:
+                for path in path_set:
+                    if path is None:
+                        continue
+                    screen_path = [(path[0][0]*scale, path[0][1]*scale)]
+                    screen_codes = [mpath.Path.MOVETO]
+                    for point in path[1:]:
+                        screen_path.append((point[0]*scale, point[1]*scale))
+                        screen_codes.append(mpath.Path.LINETO)
+
+                    screen_path = mpath.Path(screen_path, screen_codes)
+                    patch = mpatches.PathPatch(screen_path, edgecolor=edge_colour, facecolor='none', lw=BACKGROUND_PATH_WIDTH)
+                    ax.add_patch(patch)
+        except AttributeError:
+            pass
+
+        # self._plot_tasks()
+        INITIAL_TASK_SIZE = 10
+        max_lateness = 600.0
+        for task in self.task_list[::-1]:
+
+            if task.service_state is ServiceState.SERVICED:
+                continue
+
+            if task.time <= self.sim_time:
+                lateness = min(max_lateness, self.sim_time - task.time)
+
+                hue = 120.0/360.0 * (max_lateness - lateness) / max_lateness
+                r, g, b = colorsys.hls_to_rgb(h=hue, l=0.5, s=0.99)
+
+                circle = mpatches.Circle((task.location[0]*scale, task.location[1]*scale), INITIAL_TASK_SIZE +
+                                         sqrt(lateness) * 2, ec=(0, 0, 0, 0.5), fc=(r, g, b, 0.5))
+                ax.add_patch(circle)
+
+        for actor in self.actor_list:
             try:
-                paths = self.generator.paths
-                for path_set in paths:
-                    for path in path_set:
-                        if path is None:
-                            continue
-                        screen_path = [(path[0][0]*scale, path[0][1]*scale)]
-                        screen_codes = [mpath.Path.MOVETO]
-                        for point in path[1:]:
-                            screen_path.append((point[0]*scale, point[1]*scale))
-                            screen_codes.append(mpath.Path.LINETO)
-
-                        screen_path = mpath.Path(screen_path, screen_codes)
-                        patch = mpatches.PathPatch(screen_path, edgecolor=edge_colour, facecolor='none', lw=BACKGROUND_PATH_WIDTH )
-                        ax.add_patch(patch)
-            except AttributeError:
-                pass 
-
-            # self._plot_tasks()
-            INITIAL_TASK_SIZE = 10
-            max_lateness = 600.0
-            for task in self.task_list[::-1]:
-
-                if task.service_state is ServiceState.SERVICED:
-                    continue
-
-                if task.time <= self.sim_time:
-                    lateness = min(max_lateness, self.sim_time - task.time)
-
-                    hue = 120.0/360.0 * (max_lateness - lateness) / max_lateness
-                    r, g, b = colorsys.hls_to_rgb(h=hue, l=0.5, s=0.99)
-
-                    circle = mpatches.Circle( (task.location[0]*scale, task.location[1]*scale), INITIAL_TASK_SIZE + sqrt(lateness) * 2, ec=(0,0,0,0.5), fc=(r,g,b,0.5))
-                    ax.add_patch(circle)
-
-            for actor in self.actor_list:
 
                 # self._draw_actor_path(actor)
                 if len(actor.complete_path) > 1:
@@ -522,24 +524,26 @@ class Simulation:
 
                         screen_codes[0] = mpath.Path.MOVETO
 
-                    if len( screen_path ):
+                    if len(screen_path):
                         screen_path = mpath.Path(screen_path, screen_codes)
-                        patch = mpatches.PathPatch(screen_path, facecolor='none', edgecolor=edge_colour, lw=ACTOR_PATH_WIDTH )
+                        patch = mpatches.PathPatch(screen_path, facecolor='none', edgecolor=edge_colour, lw=ACTOR_PATH_WIDTH)
                         ax.add_patch(patch)
-                          
-                # self._draw_actor_depot(actor)
-                edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
-                face_colour = [c/255.0 for c in DEPOT_BACKGROUND_COLOUR]
-                rect = mpatches.Rectangle((actor.depot[0]*scale-DEPOT_SIZE//2, actor.depot[1]*scale-DEPOT_SIZE//2), width=DEPOT_SIZE, height=DEPOT_SIZE, ec=edge_colour, fc=face_colour)
-                ax.add_patch(rect)
-                
-                # self._draw_actor(actor)
-            
-            fig.set_size_inches(width, height)
-            fig.savefig(f'initial_conditions.pdf')
+            except AttributeError:
+                pass
 
-            plt.show(block=True)
+            # self._draw_actor_depot(actor)
+            edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
+            face_colour = [c/255.0 for c in DEPOT_BACKGROUND_COLOUR]
+            rect = mpatches.Rectangle((actor.depot[0]*scale-DEPOT_SIZE//2, actor.depot[1]*scale-DEPOT_SIZE//2),
+                                      width=DEPOT_SIZE, height=DEPOT_SIZE, ec=edge_colour, fc=face_colour)
+            ax.add_patch(rect)
 
+            # self._draw_actor(actor)
+
+        fig.set_size_inches(width, height)
+        fig.savefig(f'initial_conditions.pdf')
+
+        plt.show(block=True)
 
     ##################################################################################
     # Simulator step functions
@@ -551,7 +555,7 @@ class Simulation:
         Args:
             actor_index (_type_): the index of the actor
         """
-        rval = self.actor_list[actor_index].tick(round(self.sim_time, 2))
+        rval = self.actor_list[actor_index].tick(round(self.sim_time, 2), tick_time)
 
         if rval == None:
             # TODO: Removing this for now -- skipping the time means the clock gets out of sync
@@ -615,33 +619,16 @@ class Simulation:
 
         # TODO: The selection of the next policy, and the target of the Actor(s) should really be in the policy, not here in
         #       the simulation code.
-        #
-        # if the actor is idle
         for actor in self.actor_list:
-            if not actor.is_busy():
 
-                sector_tasks = []
-                if self.centralized:
-                    for _ in range(self.num_sectors):
-                        for task in self.task_list:
-                            if self.sim_time < task.time:
-                                break
+            # TODO: HACK for DC Batch -- shortcut for everything else -- will break things if continous planning is required -- should
+            #       make this an auto-detect option
+            if actor.is_busy():
+                continue
 
-                            if not task.is_pending():
-                                continue
-
-                            if self.current_sector.contains(task.sector):
-                                sector_tasks.append(task)
-
-                        if len(sector_tasks):
-                            print("[{:.2f}]: Currently {} tasks pending for sector {}".format(
-                                round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
-                            break
-
-                        # nothing in this sector, check the next
-                        self.current_sector = self.field.next_sector()
-
-                else:
+            sector_tasks = []
+            if self.centralized:
+                for _ in range(self.num_sectors):
                     for task in self.task_list:
                         if self.sim_time < task.time:
                             break
@@ -649,16 +636,35 @@ class Simulation:
                         if not task.is_pending():
                             continue
 
-                        if actor.sector == task.sector:
+                        if self.current_sector.contains(task):
                             sector_tasks.append(task)
 
-                if len(sector_tasks):
-                    self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
-                                 cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first)
+                    if len(sector_tasks):
+                        print("[{:.2f}]: Currently {} tasks pending for sector {}".format(
+                            round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
+                        break
 
-                    if self.centralized:
-                        # assigned this sector, moving on...
-                        self.current_sector = self.field.next_sector()
+                    # nothing in this sector, check the next
+                    self.current_sector = self.field.next_sector()
+
+            else:
+                for task in self.task_list:
+                    if self.sim_time < task.time:
+                        break
+
+                    if not task.is_pending():
+                        continue
+
+                    if actor.sector == task.sector:
+                        sector_tasks.append(task)
+
+            if len(sector_tasks):
+                res = self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
+                                   cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first)
+
+                if res and self.centralized:
+                    # assigned this sector, moving on...
+                    self.current_sector = self.field.next_sector()
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
