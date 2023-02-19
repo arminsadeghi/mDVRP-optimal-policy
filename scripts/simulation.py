@@ -116,7 +116,7 @@ class Simulation:
         else:
             self.task_list = task_list
 
-        self.rho = round((self.service_time + self.generator.mean_distance) * self.pois_lambda, 2)
+        self.rho = round(self.service_time * self.pois_lambda, 2)
 
     def load_policy(self, policy_name, policy_args):
         # load the policy

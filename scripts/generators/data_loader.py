@@ -99,7 +99,7 @@ class DataLoader():
                 initial_wait=self.gen.uniform()*self.max_initial_wait,
                 index=task_index,
                 # TODO: Fixing service time variance proportional to specified time
-                service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
+                service_time=self.gen.normal(self.service_time, 0.3*self.service_time)
             )
             tasks.append(new_task)
 
@@ -112,10 +112,11 @@ class DataLoader():
                 location=location,
                 sector=sector,
                 time=sim_time,
-                initial_wait=self.gen.uniform()*self.max_initial_wait,
+                initial_wait=0,  # no latent time -- self.gen.uniform()*self.max_initial_wait,
                 index=task_index,
-                # TODO: Fixing service time variance proportional to specified time
-                service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
+                # TODO: Fixing service time variance proportional to specified time -- note using 0.3 to allow a little more variation
+                #       given the longer service times expected in the 'real' data case
+                service_time=self.gen.normal(self.service_time, 0.3*self.service_time)
             )
             tasks.append(new_task)
             sim_time += next_time
