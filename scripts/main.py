@@ -85,23 +85,24 @@ def simulate(args, delivery_log=None):
     )
 
     if args.seed is not None and args.data_source is None:
-        if not path.isdir(TASKS_DIR):
-            mkdir(TASKS_DIR)
+        # if not path.isdir(TASKS_DIR):
+        #     mkdir(TASKS_DIR)
 
-        tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
+        # tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
 
-        # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
-                                '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
-        try:
-            with open(pickle_file, 'rb') as fp:
-                task_list = load(fp)
-                sim.reset(task_list)
-        except Exception as e:
-            print(e)
-            # not loading, save it instead
-            with open(pickle_file, 'wb') as fp:
-                dump(sim.task_list, fp)
+        # # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
+        # pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
+        #                         '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
+        # try:
+        #     with open(pickle_file, 'rb') as fp:
+        #         task_list = load(fp)
+        #         sim.reset(task_list)
+        # except Exception as e:
+        #     print(e)
+        #     # not loading, save it instead
+        #     with open(pickle_file, 'wb') as fp:
+        #         dump(sim.task_list, fp)
+        pass
 
     while True:
         if args.show_sim:
