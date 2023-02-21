@@ -41,7 +41,8 @@ class Simulation:
         # load the draw method
         self.load_generator(generator_name=generator_name, generator_args=generator_args)
 
-        if num_actors:
+        self.centralized = centralized
+        if generator_args['data_source'] is None:
             # split the environment...
             self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
             self.centre = [0.5, 0.5]
@@ -49,12 +50,15 @@ class Simulation:
             self.field = Field(self.vertices, self.centre, self.num_sectors)
 
             self.num_actors = num_actors
-            self.centralized = centralized
         else:
-            self.centralized = False
             self.field = self.generator.field
-            self.num_actors = self.field.count
+
             self.num_sectors = self.field.count
+            if self.centralized:
+                self.centre = self.field.centre
+                self.num_actors = num_actors
+            else:
+                self.num_actors = self.field.count
 
         self.current_sector = self.field.next_sector()
 
@@ -76,7 +80,7 @@ class Simulation:
         self.actor_list = []
         for i in range(self.num_actors):
             if self.centralized:
-                pos = [0.5, 0.5]
+                pos = self.field.centre
                 depot = pos
                 sector = 0
             else:

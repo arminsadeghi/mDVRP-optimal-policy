@@ -50,9 +50,6 @@ def simulate(args, delivery_log=None):
         else:
             args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
-    if args.data_source is not None:
-        args.actors = None
-
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
     generator_args['max_time'] = args.max_time
@@ -61,6 +58,8 @@ def simulate(args, delivery_log=None):
     generator_args['max_initial_wait'] = args.max_initial_wait
     generator_args['total_tasks'] = args.total_tasks
     generator_args['data_source'] = args.data_source
+    generator_args['sectors'] = args.sectors
+    generator_args['centralized'] = args.centralized
 
     sim = Simulation(
         policy_name=args.policy,
