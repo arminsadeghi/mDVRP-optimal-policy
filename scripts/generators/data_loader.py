@@ -42,8 +42,62 @@ class DataLoader():
             self.service_time = kwargs['service_time']
         except KeyError:
             self.service_time = 0
+        try:
+            self.sectors = kwargs['sectors']
+        except KeyError:
+            self.sectors = 1
+        try:
+            self.centralized = kwargs['centralized']
+        except KeyError:
+            self.centralized = False
 
         self.reset()
+
+    def reassign_sectors(self):
+        # divide the space into equal angles
+        angles = np.linspace(0, 2*np.pi, self.sectors + 1)[:-1]
+        inc = 2 * np.pi / 2000
+
+        def calc_lines(angles):
+            lines = []
+            sx = self.tasks.iloc[0]['LOC_LONG']
+            sy = self.tasks.iloc[0]['LOC_LAT']
+            for i in range(len(angles)):
+                ex = sx + np.cos(angles[i]) * 0.025
+                ey = sy + np.sin(angles[i]) * 0.025
+                lines.append(((sx, sy), (ex, ey)))
+            return lines
+
+        lines = calc_lines(angles=angles)
+
+        # Positive if left, neg if right
+        def side(line, px, py):
+            v1, v2 = line
+            return (v2[0] - v1[0]) * (py - v1[1]) - (px - v1[0]) * (v2[1] - v1[1])
+
+        def calc_sector(lines, px, py):
+            for i in range(len(lines)):
+                next = (i + 1) % len(lines)
+                if side(lines[i], px, py) >= 0 and side(lines[next], px, py) < 0:
+                    return i
+
+        while True:
+            self.tasks['CLUSTER'] = [calc_sector(lines, px=x, py=y) for x, y in zip(self.tasks['LOC_LONG'], self.tasks['LOC_LAT'])]
+            counts = self.tasks['CLUSTER'].value_counts()
+            largest = counts.index[0]
+            smallest = counts.index[-1]
+            print(counts, largest, smallest)
+            if counts[largest] - counts[smallest] <= max(1, len(self.tasks) * 0.01):
+                break
+
+            sign = -1
+            for a in range(self.sectors):
+                candidate = int((largest + a + 1) % self.sectors)
+                angles[candidate] += sign * inc
+                if candidate == smallest:
+                    sign = 1
+
+            lines = calc_lines(angles)
 
     def reset(self):
         # TODO: Stopgap measure to set global seed here as well since some tasks are still using the random module.
@@ -51,6 +105,9 @@ class DataLoader():
         self.gen = np.random.default_rng(seed=self.seed)
 
         self.tasks = pd.read_csv(self.data_source)
+
+        if self.centralized and self.sectors > 1:
+            self.reassign_sectors()
 
         distance_df = pd.read_csv(".".join(self.data_source.split('.')[:-2] + ['distances', 'csv']))
         pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
@@ -72,7 +129,7 @@ class DataLoader():
                         locations = [loc for loc in self.paths[r, c].split(';')]
                         self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
 
-        self.field = DataField(self.tasks, self.distances)
+        self.field = DataField(self.tasks, self.distances, self.centralized)
 
     def draw(self):
         v = []
