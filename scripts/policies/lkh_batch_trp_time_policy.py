@@ -18,7 +18,7 @@ def prep_tour(actor, tasks, field):
     pending_tasks = []
     node = 0
     for task in tasks:
-        if task.is_pending():
+        if task.is_waiting():
             pending_tasks.append(task)
             task_indices.append(node)
             node += 1
@@ -28,7 +28,7 @@ def prep_tour(actor, tasks, field):
     return distances, task_indices
 
 
-def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
+def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False):
     """tsp policy
 
     Args:
@@ -36,12 +36,19 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
         tasks (_type_): the tasks arrived
     """
 
+    if actors[0].is_busy():
+        return
+
     distances, task_indices = prep_tour(actors[0], tasks, field=field)
     if not len(tasks):
         return
 
-    tours = solve_time_trp('DVR TRP', 'Time between Pending Tasks', tasks=tasks, distances=distances,
-                           simulation_time=current_time, mean_service_time=service_time, scale_factor=1000.0)
+    try:
+        tours = solve_time_trp('DVR TRP', 'Time between Pending Tasks', tasks=tasks, distances=distances,
+                               simulation_time=current_time, mean_service_time=service_time, cost_exponent=cost_exponent, scale_factor=100.0)
+    except Exception as e:
+        print(e)
+        print("ERROR!")
 
     # tour depot (the actor) is being dropped -- push it back in...
     for tour in tours:
