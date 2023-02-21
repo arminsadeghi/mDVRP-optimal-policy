@@ -50,9 +50,6 @@ def simulate(args, delivery_log=None):
         else:
             args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
-    if args.data_source is not None:
-        args.actors = None
-
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
     generator_args['max_time'] = args.max_time
@@ -61,6 +58,8 @@ def simulate(args, delivery_log=None):
     generator_args['max_initial_wait'] = args.max_initial_wait
     generator_args['total_tasks'] = args.total_tasks
     generator_args['data_source'] = args.data_source
+    generator_args['sectors'] = args.sectors
+    generator_args['centralized'] = args.centralized
 
     sim = Simulation(
         policy_name=args.policy,
@@ -85,23 +84,24 @@ def simulate(args, delivery_log=None):
     )
 
     if args.seed is not None and args.data_source is None:
-        if not path.isdir(TASKS_DIR):
-            mkdir(TASKS_DIR)
+        # if not path.isdir(TASKS_DIR):
+        #     mkdir(TASKS_DIR)
 
-        tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
+        # tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
 
-        # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
-                                '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
-        try:
-            with open(pickle_file, 'rb') as fp:
-                task_list = load(fp)
-                sim.reset(task_list)
-        except Exception as e:
-            print(e)
-            # not loading, save it instead
-            with open(pickle_file, 'wb') as fp:
-                dump(sim.task_list, fp)
+        # # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
+        # pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
+        #                         '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
+        # try:
+        #     with open(pickle_file, 'rb') as fp:
+        #         task_list = load(fp)
+        #         sim.reset(task_list)
+        # except Exception as e:
+        #     print(e)
+        #     # not loading, save it instead
+        #     with open(pickle_file, 'wb') as fp:
+        #         dump(sim.task_list, fp)
+        pass
 
     while True:
         if args.show_sim:
@@ -143,24 +143,30 @@ def multiple_sims(args):
         seeds = [args.seed, ]
         seed_str = '_' + str(args.seed) + 's'
 
-    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
+    if args.eta_first:
+        eta_str = str(args.eta) + 'ef_'
+    else:
+        eta_str = str(args.eta) + 'e_'
+
+    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + eta_str + \
         str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv"
     results_file_name = path.join(RESULTS_DIR, results_str)
     f = open(results_file_name, 'w')
-    f.write('policy,seed,lambda,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    f.write('policy,seed,lambda,rho,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
     f.flush
 
     delivery_log_str = 'DeliveryLog_' + results_str
     delivery_log_name = path.join(RESULTS_DIR, delivery_log_str)
     delivery_log = open(delivery_log_name, 'w')
-    delivery_log.write('id,px,py,t_arrive,t_service\n')
+    delivery_log.write('id,px,py,t_arrive,t_service,t_initial\n')
     delivery_log.flush()
 
-    # estimate the pending queue (overwrite whatever is passed in)
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        # estimate the pending queue based on lambda
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     for seed in seeds:
         args.seed = seed
@@ -168,7 +174,7 @@ def multiple_sims(args):
         sim = simulate(args, delivery_log)
         policy = args.policy.replace('_', ' ')
         f.write(
-            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(sim.rho) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
             str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
             str(sim._total_travel_distance) + "," +
             str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
@@ -265,7 +271,7 @@ if __name__ == "__main__":
         help='Pending tasks at the start of the simulation (t=0).  If -1, waiting tasks will be scaled relative to lambda.')
     argparser.add_argument(
         '--max-initial-wait',
-        default=SERVICE_TIME,
+        default=0,
         type=float,
         help='Initial tasks will have a waiting time randomly drawn from [0,max).')
     argparser.add_argument(

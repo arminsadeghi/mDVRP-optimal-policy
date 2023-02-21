@@ -39,6 +39,9 @@ class Generator:
         except KeyError:
             self.service_time = 0
 
+        # size = (self.max - self.min)
+        #
+        self.mean_distance = 0  # ignoring travel  # np.sqrt(2 * size*size)
         self.reset()
 
     def reset(self):

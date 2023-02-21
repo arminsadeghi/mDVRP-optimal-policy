@@ -23,17 +23,23 @@ def prep_tour(tasks):
     # Node indices start at 1 and the first index is the position of the actor
     task_indices = [-1, -1]
 
+    at_least_one_waiting = False
+
     node = 0
     for task in tasks:
-        if task.is_waiting():
+        # TODO: This will cause problems with actors stealing tasks from each other -- should check that the task is
+        #       assigned to this particular actor.  Next time....
+        if task.is_pending():
+            if task.is_waiting():
+                at_least_one_waiting = True
             pending_tasks.append(task)
             task_indices.append(node)
             node += 1
 
-    return pending_tasks, task_indices
+    return pending_tasks, task_indices, at_least_one_waiting
 
 
-def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False):
+def policy(actors, tasks, field=None, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False):
     """tsp policy
 
     Args:
@@ -43,19 +49,14 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
 
     check_tour = False
 
-    # TODO: ASSUMING ONLY ONE ACTOR HERE!!!
-    idle_actors = []
-    for actor in actors:
-        if not actor.is_busy():
-            idle_actors.append(actor)
-    if not len(idle_actors):
-        return True
+    # TODO: can only support/route for a single actor at a time...
+    assert (len(actors) == 1)
 
-    pending_tasks, task_indices = prep_tour(tasks)
-    if not len(pending_tasks):
+    pending_tasks, task_indices, new_task_added = prep_tour(tasks)
+    if not len(pending_tasks) or new_task_added == False:
         return
 
-    tours = solve_trp('DVR TSP', 'Distance between Pending Tasks', idle_actors[0].pos, pending_tasks,
+    tours = solve_trp('DVR TSP', 'Distance between Pending Tasks', actors[0].pos, pending_tasks,
                       simulation_time=current_time, mean_service_time=service_time, cost_exponent=cost_exponent, scale_factor=10000.0)
 
     # tour depot (the actor) is being dropped -- push it back in...
@@ -63,7 +64,7 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
         tour.insert(0, 1)
 
     if check_tour:
-        chk_distance_matrix, _ = get_distance_matrix(idle_actors, pending_tasks)
+        chk_distance_matrix, _ = get_distance_matrix(actors=actors, tasks=pending_tasks)
         chk_distance_matrix = pad(chk_distance_matrix, 1)
 
         lkh_cost = tour_cost(
@@ -77,7 +78,7 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
         )
 
         our_tours, our_task_indices, our_cost = plan_tours(
-            actors=idle_actors,
+            actors=actors,
             tasks=tasks,
             current_time=current_time,
             service_time=service_time,
@@ -91,5 +92,5 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
         with open(fname, "a") as fp:
             fp.write(f'{lkh_cost},{our_cost},{len(tours[0])}\n')
 
-    assign_tours_to_actors(idle_actors, pending_tasks, tours, task_indices, eta=eta, eta_first=eta_first)
+    assign_tours_to_actors(actors, pending_tasks, tours, task_indices, eta=eta, eta_first=eta_first)
     return False

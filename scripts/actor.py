@@ -1,5 +1,5 @@
 from math import sqrt, atan2
-from config import DISTANCE_TOLERANCE, TICK_TIME
+from config import DISTANCE_TOLERANCE
 import pygame
 from Task import Task, ServiceState
 
@@ -46,7 +46,7 @@ class Actor:
     def near(self, pos, tolerance=DISTANCE_TOLERANCE):
         return self.distance_to(pos) <= tolerance
 
-    def _move(self, sim_time):
+    def _move(self, sim_time, tick_time):
         """move towards the goal
         """
 
@@ -76,12 +76,12 @@ class Actor:
             dir[0]*dir[0] + dir[1]*dir[1]
         )
 
-        if (dist > self.speed*TICK_TIME):
+        if (dist > self.speed*tick_time):
             self.pos = [
-                round(self.pos[0] + dir[0]*self.speed*1.0/dist*TICK_TIME, 5),
-                round(self.pos[1] + dir[1]*self.speed*1.0/dist*TICK_TIME, 5)
+                round(self.pos[0] + dir[0]*self.speed*1.0/dist*tick_time, 5),
+                round(self.pos[1] + dir[1]*self.speed*1.0/dist*tick_time, 5)
             ]
-            self.travel_dist += self.speed * TICK_TIME
+            self.travel_dist += self.speed * tick_time
 
             # moving -- update the orientation
             self.orientation = atan2(dir[1], dir[0])
@@ -98,7 +98,7 @@ class Actor:
 
             if (len(self.path) >= 1):
                 print("[{:.2f}]: Arrived at service location at {}".format(sim_time, self.path[0][0].location))
-                self.servicing = self.path.pop(0)
+                self.servicing, _ = self.path.pop(0)
                 self.servicing.service_state = ServiceState.IN_SERVICE
                 self.time_arrived = sim_time
 
@@ -160,13 +160,13 @@ class Actor:
             # moving -- update the orientation
             self.orientation = atan2(dir[1], dir[0])
 
-    def tick(self, sim_time):
+    def tick(self, sim_time, tick_time):
         """a time step
         """
 
         if self.servicing is None:
             if self.euclidean:
-                self._move(sim_time)
+                self._move(sim_time, tick_time)
             else:
                 self._travel(sim_time)
 

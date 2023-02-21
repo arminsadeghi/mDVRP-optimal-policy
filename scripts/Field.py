@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
+from Task import Task
 
 
 def distance(a, b):
@@ -12,18 +13,22 @@ def distance(a, b):
 
 
 class Sector:
-    def __init__(self, id, polygon=None, centroid=None) -> None:
+    def __init__(self, id, polygon=None, centroid=None, euclidean=True) -> None:
         self.polygon = polygon
         self.centroid = centroid
         if self.centroid is None:
             self.centroid = (self.polygon.centroid.x, self.polygon.centroid.y)
         self.id = id
+        self.euclidean = euclidean
 
-    def contains(self, location):
-        if type(location) != list and type(location) != np.array and type(location) != tuple:
-            return self.id == location
+    def contains(self, obj):
+        if type(obj) == list or type(obj) == np.array or type(obj) == tuple:
+            return self.polygon.intersects(Point(obj[0], obj[1]))
         else:
-            return self.polygon.intersects(Point(location[0], location[1]))
+            if self.euclidean:
+                return self.polygon.intersects(Point(obj.location[0], obj.location[1]))
+            else:
+                return self.id == obj.sector
 
     def is_near_centre(self, location, tolerance=0.01):
         dist = Point(location[0], location[1]).distance(self.centroid)
@@ -39,7 +44,7 @@ class Sector:
 
 
 class Field:
-    def __init__(self, vertices, centre, count) -> None:
+    def __init__(self, vertices, centre, count, centralized=False) -> None:
         self.perimeter_len = 0
         self.count = count
         self.centre = centre
@@ -99,17 +104,22 @@ class Field:
 
 
 class DataField:
-    def __init__(self, df, distances) -> None:
-        super().__init__()
-
+    def __init__(self, df, distances, centralized=False) -> None:
         self.sectors = []
         self.sector_index = 0
         self.count = 0
         self.distances = distances
 
-        for i, row in df.loc[df['DEPOT'] == True].iterrows():
-            self.sectors.append(Sector(id=self.count, centroid=(row['X'], row['Y'])))
-            self.count += 1
+        if centralized:
+            sectors = set(df['CLUSTER'])
+            self.count = len(sectors) - 1  # skip the depot
+            for i in range(self.count):
+                self.sectors.append(Sector(i, centroid=(df.iloc[0]['X'], df.iloc[0]['Y']), euclidean=False))
+            self.centre = (df.iloc[0]['X'], df.iloc[0]['Y'])
+        else:
+            for i, row in df.loc[df['DEPOT'] == True].iterrows():
+                self.sectors.append(Sector(id=self.count, centroid=(row['X'], row['Y']), euclidean=False))
+                self.count += 1
 
     def next_sector(self):
         self.sector_index = (self.sector_index + 1) % self.count
