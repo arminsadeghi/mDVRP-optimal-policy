@@ -19,6 +19,14 @@ mpl.use('pdf')
 width = 8  # 3.487
 height = width / 1.5
 
+USE_MONTREAL_DATA = True
+
+if USE_MONTREAL_DATA:
+    HEADER_STR = "DeliveryLog_montreal_ral"
+else:
+    HEADER_STR = "DeliveryLog_ral"
+HEADER_SUBSTR = ""
+
 
 def export_table2(df, hues):
 
@@ -29,7 +37,7 @@ def export_table2(df, hues):
     print('\\caption{Mean, Median and Average Task Wait Times (m)}')
     print('\\label{table:task-time-data}')
     print('\\begin{center}')
-    print('\\begin{tabular}{@{} l c c c | c c c | c c c | c c c | c c c @{}}')
+    print('\\begin{tabular}{@{} l | c c c | c c c | c c c | c c c | c c c @{}}')
     print('\\toprule')
     print(' & \\multicolumn{3}{c}{$\\rho=0.5$} & \\multicolumn{3}{c}{$\\rho=0.6$} & \\multicolumn{3}{c}{$\\rho=0.7$} & \\multicolumn{3}{c}{$\\rho=0.8$} & \\multicolumn{3}{c}{$\\rho=0.9$} \\\\')
     print('Method & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean & $\\sigma$ & 95\% \\\\')
@@ -37,10 +45,13 @@ def export_table2(df, hues):
 
     for hue in hues:
         s = hue
-        for rho in [0.5, 0.6, 0.7, 0.8, 0.9]:
+        for rho in [0.6, 0.7, 0.8, 0.9]:
             df_slice = df[(df['Solver'] == hue) & (df['rho'] == rho)]
-            # s += ' & ' + f"{(df_slice['Wait Time'].mean()):5.2f} & {(df_slice['Wait Time'].std()):5.2f} & {(df_slice['Wait Time'].quantile(q=0.95)):5.2f}"
-            s += ' & ' + f"{(df_slice['wait_minutes'].mean()):5.2f} & {(df_slice['wait_minutes'].std()):5.2f} & {(df_slice['wait_minutes'].quantile(q=0.95)):5.2f}"
+            if USE_MONTREAL_DATA:
+                s += ' & ' + \
+                    f"{(df_slice['wait_minutes'].mean()):5.2f} & {(df_slice['wait_minutes'].std()):5.2f} & {(df_slice['wait_minutes'].quantile(q=0.95)):5.2f}"
+            else:
+                s += ' & ' + f"{(df_slice['Wait Time'].mean()):5.2f} & {(df_slice['Wait Time'].std()):5.2f} & {(df_slice['Wait Time'].quantile(q=0.95)):5.2f}"
         s += "\\\\"
         print(s)
 
@@ -70,10 +81,12 @@ def export_table(df, hues):
         rho_str = str(rho)
         for hue in hues:
             df_slice = df[(df['Solver'] == hue) & (df['rho'] == rho)]
-            # print(
-            #     f"{rho_str} & {hue} & {(df_slice['Wait Time'].mean()):5.2f} & {(df_slice['Wait Time'].median()):5.2f} & {(df_slice['Wait Time'].std()):5.2f} & {(df_slice['Wait Time'].quantile(q=0.95)):5.2f} \\\\")
-            print(
-                f"{rho_str} & {hue} & {(df_slice['wait_minutes'].mean()):5.2f} & {(df_slice['wait_minutes'].median()):5.2f} & {(df_slice['wait_minutes'].std()):5.2f} & {(df_slice['wait_minutes'].quantile(q=0.95)):5.2f} \\\\")
+            if USE_MONTREAL_DATA:
+                print(
+                    f"{rho_str} & {hue} & {(df_slice['wait_minutes'].mean()):5.2f} & {(df_slice['wait_minutes'].median()):5.2f} & {(df_slice['wait_minutes'].std()):5.2f} & {(df_slice['wait_minutes'].quantile(q=0.95)):5.2f} \\\\")
+            else:
+                print(
+                    f"{rho_str} & {hue} & {(df_slice['Wait Time'].mean()):5.2f} & {(df_slice['Wait Time'].median()):5.2f} & {(df_slice['Wait Time'].std()):5.2f} & {(df_slice['Wait Time'].quantile(q=0.95)):5.2f} \\\\")
             rho_str = ''
 
     print('\\bottomrule')
@@ -93,10 +106,12 @@ def reconstruct_policy_label(tags, meta_data, offset):
         if tags[offset-7] == 'cont':
             return '$c^p$-$\mathtt{CONT}$ $p$=$'+str(meta_data['p'])+'$'
         else:
-            if meta_data['eta'] == 0.05:
-                return '$\mathtt{PROPOSED}$'
-            else:
-                return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
+            # if meta_data['eta'] == 0.05:
+            #     return '$\mathtt{PROPOSED}$'
+            # else:
+            #     # return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
+            return '$\mathtt{PROPOSED}$ $\eta$=$'+str(meta_data['eta']) + '$'
+            # return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
         # return 'LKH-Batch-TRP'
     elif tags[offset-6] == 'tsp':
         if tags[offset-7] == 'batch':
@@ -125,7 +140,8 @@ def plot_comparison(files, mode='baselines'):
 
     df_list = []
     for f in files:
-        if 'DeliveryLog_montreal_ral' in f:
+        if HEADER_STR in f and HEADER_SUBSTR in f:
+            # if 'DeliveryLog' in f and 'icra_v6_lkh_batch_trp' in f:       # ICRA/OLD data
             df = pd.read_csv(f)
             try:
                 df['cost-exponent'] = df['cost_exponent']
@@ -185,15 +201,15 @@ def plot_comparison(files, mode='baselines'):
         ]
 
         hue_order = [
-            '$\mathtt{PROPOSED}$',
+            '$\mathtt{PROPOSED}$ $\eta$=$0.05$',
             # '$c^p$-$\mathtt{BATCH}$, $\eta=0.05$, $p=1.5$',
-            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.5$',
+            '$\mathtt{PROPOSED}$ $\eta$=$0.2$',
             '$\eta$-$\mathtt{BATCH}$ $\eta$=$1.0$',
             # '$\eta - \mathtt{BATCH}$, $\eta=1.0$, $r=4$',
             #  '$\eta - \mathtt{BATCH}$, $\eta=0.5$',
             '$\eta$-$\mathtt{BATCH}$ $\eta$=$0.2$',
             # '$\mathtt{DC}$-$\mathtt{BATCH}$, $\eta=1.0$, $r=10$',
-            # '$\mathtt{DC}$-$\mathtt{BATCH}$',
+            '$\mathtt{DC}$-$\mathtt{BATCH}$',
             # '$c^p$-$\mathtt{BATCH}$, $\eta=1.0$, $p=1.5$',
             # '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=2.0$',
             # '$c^p$-$\mathtt{BATCH}$, $\eta=1.0$, $p=2.0$',
@@ -205,20 +221,20 @@ def plot_comparison(files, mode='baselines'):
 
     elif mode == 'differentP':
         hue_order = [
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=1.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=1.1$',
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=1.5$',
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=2.0$',
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=3.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$2.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$3.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=5.0$',
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=10.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$10.0$',
         ]
 
         colours = [
             'lightblue',
             # 'slateblue',
             # 'lavender',
-            'darkorange',
+            'wheat',
             'violet',
             # 'bisque',
             'aliceblue',
@@ -227,12 +243,12 @@ def plot_comparison(files, mode='baselines'):
         ]
     elif mode == 'Variance':
         hue_order = [
-            '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=1.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta=0.2$, $p=1.5$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=5.0$',
-            '$\eta$-$\mathtt{BATCH}$, $\eta=1.0$',
+            '$\eta$-$\mathtt{BATCH}$ $\eta=1.0$',
             # '$\eta - \mathtt{BATCH}$, $\eta=1.0$, $r=4$',
             #  '$\eta - \mathtt{BATCH}$, $\eta=0.5$',
-            '$\eta$-$\mathtt{BATCH}$, $\eta=0.2$',
+            '$\eta$-$\mathtt{BATCH}$ $\eta=0.2$',
             # 'DC-$\mathtt{BATCH}$, $\eta=1.0$, $r=10$',
         ]
 
@@ -303,11 +319,14 @@ def plot_comparison(files, mode='baselines'):
             if style == 'Box':
                 flierprops = dict(marker='o', markerfacecolor='grey', markersize=2, alpha=.5,
                                   linestyle='none')
-                # sb.boxplot(x='rho', y='Wait Time', hue='Solver', hue_order=hue_order, data=df_slice,  showfliers=True,
-                #            showmeans=True, palette=colours, flierprops=flierprops)
-                sb.boxplot(x='rho', y='wait_minutes', hue='Solver', hue_order=hue_order, data=df_slice,  showfliers=True,
-                           showmeans=True, palette=colours, flierprops=flierprops)
-                ax.set_ylim([-1, 2500])
+                if USE_MONTREAL_DATA:
+                    sb.boxplot(x='rho', y='wait_minutes', hue='Solver', hue_order=hue_order, data=df_slice,  showfliers=True,
+                               showmeans=True, palette=colours, flierprops=flierprops)
+                    ax.set_ylim([-1, 2500])
+                else:
+                    sb.boxplot(x='rho', y='Wait Time', hue='Solver', hue_order=hue_order, data=df_slice,  showfliers=True,
+                               showmeans=True, palette=colours, flierprops=flierprops)
+                    ax.set_ylim([-1, 120])
 
             ax.set_xlabel("$\\rho$", fontsize=20)
             ax.set_ylabel("Wait Time (m)", fontsize=20)
