@@ -19,12 +19,16 @@ mpl.use('pdf')
 width = 8  # 3.487
 height = width / 1.5
 
+SHOW_BASELINES = True
 USE_MONTREAL_DATA = True
 
 if USE_MONTREAL_DATA:
     HEADER_STR = "DeliveryLog_montreal_ral"
+    PREFIX_STR = "Montreal_RAL"
 else:
     HEADER_STR = "DeliveryLog_ral"
+    PREFIX_STR = "RAL"
+
 HEADER_SUBSTR = ""
 
 
@@ -37,15 +41,27 @@ def export_table2(df, hues):
     print('\\caption{Mean, Median and Average Task Wait Times (m)}')
     print('\\label{table:task-time-data}')
     print('\\begin{center}')
-    print('\\begin{tabular}{@{} l | c c c | c c c | c c c | c c c | c c c @{}}')
-    print('\\toprule')
-    print(' & \\multicolumn{3}{c}{$\\rho=0.5$} & \\multicolumn{3}{c}{$\\rho=0.6$} & \\multicolumn{3}{c}{$\\rho=0.7$} & \\multicolumn{3}{c}{$\\rho=0.8$} & \\multicolumn{3}{c}{$\\rho=0.9$} \\\\')
-    print('Method & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean & $\\sigma$ & 95\% \\\\')
+    if USE_MONTREAL_DATA:
+        print('\\begin{tabular}{@{} l | c c c | c c c | c c c | c c c @{}}')
+        print('\\toprule')
+        print(' &  \\multicolumn{3}{c}{$\\rho=0.6$} & \\multicolumn{3}{c}{$\\rho=0.7$} & \\multicolumn{3}{c}{$\\rho=0.8$} & \\multicolumn{3}{c}{$\\rho=0.9$} \\\\')
+        print('Method &  Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean & $\\sigma$ & 95\% \\\\')
+    else:
+        print('\\begin{tabular}{@{} l | c c c | c c c | c c c | c c c | c c c @{}}')
+        print('\\toprule')
+        print(' & \\multicolumn{3}{c}{$\\rho=0.5$} & \\multicolumn{3}{c}{$\\rho=0.6$} & \\multicolumn{3}{c}{$\\rho=0.7$} & \\multicolumn{3}{c}{$\\rho=0.8$} & \\multicolumn{3}{c}{$\\rho=0.9$} \\\\')
+        print('Method & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean  & $\\sigma$ & 95\% & Mean & $\\sigma$ & 95\% \\\\')
+
     print('\\midrule')
+
+    if USE_MONTREAL_DATA:
+        rhos = [0.6, 0.7, 0.8, 0.9]
+    else:
+        rhos = [0.5, 0.6, 0.7, 0.8, 0.9]
 
     for hue in hues:
         s = hue
-        for rho in [0.6, 0.7, 0.8, 0.9]:
+        for rho in rhos:
             df_slice = df[(df['Solver'] == hue) & (df['rho'] == rho)]
             if USE_MONTREAL_DATA:
                 s += ' & ' + \
@@ -104,24 +120,32 @@ def reconstruct_policy_label(tags, meta_data, offset):
 
     if tags[offset-6] == 'trp':
         if tags[offset-7] == 'cont':
-            return '$c^p$-$\mathtt{CONT}$ $p$=$'+str(meta_data['p'])+'$'
+            return '$c^p$-$\mathtt{CONT}$'
         else:
-            # if meta_data['eta'] == 0.05:
-            #     return '$\mathtt{PROPOSED}$'
-            # else:
-            #     # return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
-            return '$\mathtt{PROPOSED}$ $\eta$=$'+str(meta_data['eta']) + '$'
+            if SHOW_BASELINES:
+                if meta_data['eta'] == 0.05:
+                    return '$\mathtt{PROPOSED}$'
+                else:
+                    return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta'])+'$'
+            else:
+                return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
+
+            # return '$\mathtt{PROPOSED}$ $\eta$=$'+str(meta_data['eta']) + '$'
             # return '$c^p$-$\mathtt{BATCH}$ $\eta$=$'+str(meta_data['eta']) + '$ $p$=$'+str(meta_data['p'])+'$'
         # return 'LKH-Batch-TRP'
     elif tags[offset-6] == 'tsp':
         if tags[offset-7] == 'batch':
             if meta_data['p'] == -2:
-                return '$\eta$-$\mathtt{BATCH}$ $\eta$=$1.0$'
+                return '$\mathtt{BATCH}$'
             else:
                 if meta_data['sectors'] > 1.0:
                     return '$\mathtt{DC}$-$\mathtt{BATCH}$'  # , $\eta=' + str(meta_data['eta']) + '$, $r=' + str(meta_data['sectors'])+'$'
                 else:
-                    return '$\eta$-$\mathtt{BATCH}$ $\eta$=$' + str(meta_data['eta']) + '$'
+                    if meta_data['eta'] == 1:
+                        return '$\mathtt{BATCH}$'
+                    else:
+                        # return '$\mathtt{BATCH}$ $\eta$=$' + str(meta_data['eta']) + '$'
+                        return '$\eta$-$\mathtt{BATCH}$'
         else:
             return '$\mathtt{Event}$ $p$=$1.5$'
     return 'None'
@@ -200,41 +224,77 @@ def plot_comparison(files, mode='baselines'):
             'linen'
         ]
 
-        hue_order = [
-            '$\mathtt{PROPOSED}$ $\eta$=$0.05$',
-            # '$c^p$-$\mathtt{BATCH}$, $\eta=0.05$, $p=1.5$',
-            '$\mathtt{PROPOSED}$ $\eta$=$0.2$',
-            '$\eta$-$\mathtt{BATCH}$ $\eta$=$1.0$',
-            # '$\eta - \mathtt{BATCH}$, $\eta=1.0$, $r=4$',
-            #  '$\eta - \mathtt{BATCH}$, $\eta=0.5$',
-            '$\eta$-$\mathtt{BATCH}$ $\eta$=$0.2$',
-            # '$\mathtt{DC}$-$\mathtt{BATCH}$, $\eta=1.0$, $r=10$',
-            '$\mathtt{DC}$-$\mathtt{BATCH}$',
-            # '$c^p$-$\mathtt{BATCH}$, $\eta=1.0$, $p=1.5$',
-            # '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=2.0$',
-            # '$c^p$-$\mathtt{BATCH}$, $\eta=1.0$, $p=2.0$',
-            # '$c^p$-$\mathtt{CONT}$ $p$=$2.0$',
-            # '$c^p$-$\mathtt{BATCH}$, $\eta=0.2$, $p=3.0$',
-            # '$c^p - \mathtt{BATCH}$, $(p=1.5)$ $\eta=0.5$',
-            # '$\mathtt{Event}$, $p=1.5$'
-        ]
+        if USE_MONTREAL_DATA:
+            hue_order = [
+                '$\mathtt{PROPOSED}$',
+                '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$',
+                # '$c^p$-$\mathtt{CONT}$ $p$=$2.0$',
+                '$\mathtt{BATCH}$',
+                '$\mathtt{DC}$-$\mathtt{BATCH}$',
+                '$\eta$-$\mathtt{BATCH}$',
+            ]
+
+            colours = [
+                'darkorange',  # OURS
+                'wheat',  # CP-BATCH
+                # 'lavender',    #CP-CONT
+                'royalblue',  # BATCH
+                'lightsteelblue',  # DCBATCH
+                'slateblue',  # BATCH-eta
+
+
+                'dodgerblue',
+                # 'bisque',
+                'linen'
+            ]
+
+        else:
+            hue_order = [
+                '$\mathtt{PROPOSED}$',
+                '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$',
+                '$c^p$-$\mathtt{CONT}$',
+                '$\mathtt{BATCH}$',
+                '$\mathtt{DC}$-$\mathtt{BATCH}$',
+                '$\eta$-$\mathtt{BATCH}$',
+            ]
+
+            colours = [
+                'darkorange',  # OURS
+                'wheat',  # CP-BATCH
+                'lavender',  # CP-CONT
+                'royalblue',  # BATCH
+                'lightsteelblue',  # DCBATCH
+                'slateblue',  # BATCH-eta
+
+
+                'dodgerblue',
+                # 'bisque',
+                'linen'
+            ]
 
     elif mode == 'differentP':
         hue_order = [
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$1.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=1.1$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$1.5$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$2.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$2.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$2.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$2.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$3.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$3.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=5.0$',
-            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$10.0$',
+            # '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$10.0$',
         ]
 
         colours = [
-            'lightblue',
-            # 'slateblue',
-            # 'lavender',
+            'slateblue',
+            'lavender',
+            'darkorange',  # OURS
             'wheat',
+            'lightblue',
             'violet',
             # 'bisque',
             'aliceblue',
@@ -336,7 +396,7 @@ def plot_comparison(files, mode='baselines'):
 
             ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent', title_fontsize=18, fontsize=16)
             fig.set_size_inches(width, height)
-            fig.savefig(style+'_'+mode+'_plot_lamda_{}_{}.pdf'.format('WaitTime', label))
+            fig.savefig(PREFIX_STR+'_'+style+'_'+mode+'_plot_lamda_{}_{}.pdf'.format('WaitTime', label))
 
     export_table(df, hues=hue_order)
     export_table2(df, hues=hue_order)
@@ -346,6 +406,8 @@ if __name__ == "__main__":
 
     path = 'results/'
     files = [path + '/' + f for f in listdir(path) if isfile(join(path, f))]
-    plot_comparison(files, 'baselines')
-    # plot_comparison(files, 'differentP')
+    if SHOW_BASELINES:
+        plot_comparison(files, 'baselines')
+    else:
+        plot_comparison(files, 'differentP')
     # plot_comparison(files, 'Variance')
