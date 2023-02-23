@@ -1,5 +1,4 @@
 import argparse
-from importlib.metadata import distribution
 from random import seed
 from simulation import Simulation
 from config import *
@@ -45,17 +44,22 @@ def simulate(args, delivery_log=None):
         args.total_tasks = args.max_tasks
 
     # override initial tasks
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     generator_args = GENERATOR_ARGS
     generator_args['seed'] = args.seed
     generator_args['max_time'] = args.max_time
     generator_args['service_time'] = args.service_time
     generator_args['initial_tasks'] = args.initial_tasks
+    generator_args['max_initial_wait'] = args.max_initial_wait
     generator_args['total_tasks'] = args.total_tasks
+    generator_args['data_source'] = args.data_source
+    generator_args['sectors'] = args.sectors
+    generator_args['centralized'] = args.centralized
 
     sim = Simulation(
         policy_name=args.policy,
@@ -75,27 +79,29 @@ def simulate(args, delivery_log=None):
         max_time=args.max_time,
         record_data=args.record_data,
         sectors=args.sectors,
+        centralized=args.centralized,
         delivery_log=delivery_log
     )
 
-    if args.seed is not None:
-        if not path.isdir(TASKS_DIR):
-            mkdir(TASKS_DIR)
+    if args.seed is not None and args.data_source is None:
+        # if not path.isdir(TASKS_DIR):
+        #     mkdir(TASKS_DIR)
 
-        tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
+        # tasks_str = '_' + str(args.initial_tasks) + 'i' + '_' + str(args.total_tasks) + 'tt'
 
-        # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
-        pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
-                                '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
-        try:
-            with open(pickle_file, 'rb') as fp:
-                task_list = load(fp)
-                sim.reset(task_list)
-        except Exception as e:
-            print(e)
-            # not loading, save it instead
-            with open(pickle_file, 'wb') as fp:
-                dump(sim.task_list, fp)
+        # # TODO: so far everything has run with 1000 tasks -- should codify that in the file name
+        # pickle_file = path.join(TASKS_DIR, TASK_LIST_FILE_PREFIX + tasks_str + '_' + str(args.lambd) +
+        #                         '_' + str(args.generator) + '_' + str(args.seed) + '.pkl')
+        # try:
+        #     with open(pickle_file, 'rb') as fp:
+        #         task_list = load(fp)
+        #         sim.reset(task_list)
+        # except Exception as e:
+        #     print(e)
+        #     # not loading, save it instead
+        #     with open(pickle_file, 'wb') as fp:
+        #         dump(sim.task_list, fp)
+        pass
 
     while True:
         if args.show_sim:
@@ -137,24 +143,30 @@ def multiple_sims(args):
         seeds = [args.seed, ]
         seed_str = '_' + str(args.seed) + 's'
 
-    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + str(args.eta) + 'e_' + \
+    if args.eta_first:
+        eta_str = str(args.eta) + 'ef_'
+    else:
+        eta_str = str(args.eta) + 'e_'
+
+    results_str = args.prefix + args.policy + '_' + str(args.sectors) + 'sc_' + str(args.cost_exponent) + 'p_' + eta_str + \
         str(args.lambd) + 'l_' + str(args.service_time) + 't' + seed_str + ".csv"
     results_file_name = path.join(RESULTS_DIR, results_str)
     f = open(results_file_name, 'w')
-    f.write('policy,seed,lambda,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
+    f.write('policy,seed,lambda,rho,sectors,cost-exponent,eta,eta-first,sim-time,avg-srv-time,tasks-srvd,max-wait-time,avg-wait-time,wait-sd,total-travel-distance,avg-agent-dist,avg-task-dist,max-agent-dist,max_queue_len\n')
     f.flush
 
     delivery_log_str = 'DeliveryLog_' + results_str
     delivery_log_name = path.join(RESULTS_DIR, delivery_log_str)
     delivery_log = open(delivery_log_name, 'w')
-    delivery_log.write('id,px,py,t_arrive,t_service\n')
+    delivery_log.write('id,px,py,t_arrive,t_service,t_initial\n')
     delivery_log.flush()
 
-    # estimate the pending queue (overwrite whatever is passed in)
-    if args.service_time:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
-    else:
-        args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
+    if args.initial_tasks < 0:
+        # estimate the pending queue based on lambda
+        if args.service_time:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd*args.service_time)**2))
+        else:
+            args.initial_tasks = floor(args.lambd * BETA**2 / ((1-args.lambd)**2))
 
     for seed in seeds:
         args.seed = seed
@@ -162,7 +174,7 @@ def multiple_sims(args):
         sim = simulate(args, delivery_log)
         policy = args.policy.replace('_', ' ')
         f.write(
-            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
+            str(policy) + "," + str(args.seed) + "," + str(args.lambd) + "," + str(sim.rho) + "," + str(args.sectors) + "," + str(args.cost_exponent) + "," + str(args.eta) + "," + str(args.eta_first) + "," + str(sim.sim_time) + "," + str(sim._avg_served_time) + "," + str(len(sim.serviced_tasks)) + "," +
             str(sim._max_served_time) + "," + str(sim._avg_served_time / len(sim.serviced_tasks)) + "," + str(sim.calculate_sd()) + "," +
             str(sim._total_travel_distance) + "," +
             str(sim._total_travel_distance / len(sim.actor_list)) + "," + str(sim._total_travel_distance / len(sim.serviced_tasks)) + "," +
@@ -256,7 +268,12 @@ if __name__ == "__main__":
         '--initial-tasks',
         default=0,
         type=int,
-        help='Pending tasks at the start of the simulation (t=0)')
+        help='Pending tasks at the start of the simulation (t=0).  If -1, waiting tasks will be scaled relative to lambda.')
+    argparser.add_argument(
+        '--max-initial-wait',
+        default=0,
+        type=float,
+        help='Initial tasks will have a waiting time randomly drawn from [0,max).')
     argparser.add_argument(
         '--load-tasks',
         action='store_true',
@@ -267,12 +284,12 @@ if __name__ == "__main__":
         type=float,
         help='Service time on arrival at each node')
     argparser.add_argument(
-        '--simulation_speed',
+        '--simulation-speed',
         default=SIMULATION_SPEED,
         type=float,
         help='Simulator speed')
     argparser.add_argument(
-        '-t', '--tick_time',
+        '-t', '--tick-time',
         default=TICK_TIME,
         type=float,
         help='Length of Simulation Time Step')
@@ -301,6 +318,10 @@ if __name__ == "__main__":
         action='store_true',
         help='Record data to disk as frames')
     argparser.add_argument(
+        '--centralized',
+        action='store_true',
+        help='Set up one depot in the centre of the map')
+    argparser.add_argument(
         '--show-sim',
         action='store_true',
         help='Display the simulation window')
@@ -312,6 +333,10 @@ if __name__ == "__main__":
         '--multipass',
         action='store_true',
         help='Run the simulation over multiple lambda and seeds')
+    argparser.add_argument(
+        '--data-source',
+        default=None,
+        help='CSV file containing task locations. Durations/Distances are loaded from a companion file, <data-source root>.distances.csv.  If the distance file is unavailable, euclidean distances are used instead')
 
     args = argparser.parse_args()
 

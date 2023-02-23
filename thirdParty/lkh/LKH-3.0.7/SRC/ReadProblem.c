@@ -985,7 +985,10 @@ static void Read_DEMAND_SECTION() {
   int Id, Demand, i, k;
   Node *N;
 
-  for (i = 1; i <= Dim; i++) {
+    if (!FirstNode)
+        CreateNodes();
+
+    for (i = 1; i <= Dim; i++) {
     fscanint(ProblemFile, &Id);
     if (Id <= 0 || Id > Dim)
       eprintf("DEMAND_SECTION: Node number out of range: %d", Id);

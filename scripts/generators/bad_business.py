@@ -13,11 +13,11 @@ class BadBusGen(Generator):
 
         self.reset()
 
-    def draw(self):
+    def draw(self, pos, stdev):
         v = []
         for i in range(self.dim):
             while True:
-                n = self.gen.normal(loc=0.15, scale=0.05)
+                n = self.gen.normal(loc=pos, scale=stdev)
                 if n >= self.min and n <= self.max:
                     break
             v.append(n)
@@ -27,52 +27,45 @@ class BadBusGen(Generator):
 
         first_time = True
 
-        e1 = [0.75, 0.75]
-        e2 = [0.75, 0.85]
-
         tasks = []
 
-        odd = True
-
         sim_time = 1
-        next_time = self.service_time + 0.1
+        next_time = self.service_time + 0.001
 
         while True:
 
             # create one task right beside the current one
             tasks.append(Task(
                 id=len(tasks),
-                location=e1 if odd else e2,
+                location=self.draw(pos=0.75, stdev=0.01),
                 time=sim_time,
                 service_time=self.service_time
             ))
 
-            if not first_time and len(tasks) < 10:
-                # and two tasks on the other side of the map
-                # TODO: Fixed service time
-                tasks.append(Task(
-                    id=len(tasks),
-                    location=self.draw(),
-                    time=sim_time,
-                    service_time=self.service_time
-                ))
-                tasks.append(Task(
-                    id=len(tasks),
-                    location=self.draw(),
-                    time=sim_time,
-                    service_time=self.service_time
-                ))
+            # and two tasks on the other side of the map
+            # TODO: Fixed service time
+            tasks.append(Task(
+                id=len(tasks),
+                location=self.draw(pos=0.15, stdev=0.05),
+                time=sim_time,
+                service_time=self.service_time
+            ))
+            # tasks.append(Task(
+            #     id=len(tasks),
+            #     location=self.draw(pos=0.15, stdev=0.05),
+            #     time=sim_time,
+            #     service_time=self.service_time
+            # ))
 
             first_time = False
 
             sim_time += next_time
-            odd = not odd
 
             if self.max_time is not None:
                 if sim_time > self.max_time:
                     break
             else:
-                if len(tasks) >= self.max_tasks:
+                if len(tasks) >= self.total_tasks:
                     break
 
         return tasks, first_time

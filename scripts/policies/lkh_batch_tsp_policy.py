@@ -17,7 +17,7 @@ def prep_tour(tasks):
 
     node = 0
     for task in tasks:
-        if task.is_pending():
+        if task.is_waiting():
             pending_tasks.append(task)
             task_indices.append(node)
             node += 1
@@ -25,7 +25,7 @@ def prep_tour(tasks):
     return pending_tasks, task_indices
 
 
-def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
+def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False):
     """tsp policy
 
     Args:
@@ -39,13 +39,14 @@ def policy(actors, tasks, new_task_added=False, current_time=0, max_solver_time=
         if not actor.is_busy():
             idle_actors.append(actor)
     if not len(idle_actors):
-        return True
+        return False
 
     tasks, task_indices = prep_tour(tasks)
     if not len(tasks):
-        return
+        return False
 
     tours = solve_tsp('DVR TSP', 'Distance between Pending Tasks', idle_actors[0].pos, tasks, scale_factor=10000.0)
 
-    assign_tours_to_actors(idle_actors, tasks, tours, task_indices, eta=eta)
-    return False
+    assign_tours_to_actors([idle_actors[0],], tasks, tours, task_indices, eta=eta, eta_first=eta_first)
+
+    return True

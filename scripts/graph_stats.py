@@ -66,9 +66,9 @@ def parse_state_data(files, prefix, eta, p):
     #     (df['cost-exponent'] == 2)
     # ]
 
-    df = df.loc[
-        (df['lambda'] >= 0.3) * (df['lambda'] <= 0.7)
-    ]
+    # df = df.loc[
+    #     (df['lambda'] >= 0.3) * (df['lambda'] <= 0.7)
+    # ]
     # df = df.loc[
     #     (df['lambda'] != 0.85)
     # ]
@@ -85,35 +85,37 @@ def parse_state_data(files, prefix, eta, p):
 
     df.sort_values(['policy', 'lambda', 'seed'], inplace=True)
 
-    df_d = df.loc[(df['cost-exponent'] == -2.0) * (df['eta'] == 1) * (df['policy'] == 'lkh batch tsp') * (df['eta-first'] == False)]
+    # df_d = df.loc[(df['cost-exponent'] == -2.0) * (df['eta'] == 1) * (df['policy'] == 'lkh batch tsp') * (df['eta-first'] == False)]
+    df_d = df.loc[(df['eta'] == 1) & (df['policy'] == 'lkh batch tsp time')]
     for policy in policies:
         for ef in efs:
             for ce in ces:
                 for eta in etas:
-                    row_mask = (df['cost-exponent'] == ce) * (df['eta'] == eta) * (df['policy'] == policy) * (df['eta-first'] == ef)
+                    row_mask = (df['cost-exponent'] == ce) & (df['eta'] == eta) & (df['policy'] == policy) & (df['eta-first'] == ef)
                     df_n = df.loc[row_mask]
                     if not len(df_n):
                         continue
 
-                    if df_d.shape[0] != df_n.shape[0]:
-                        print("WARNING: data rows are missing/not equivalent -- Trimming to allow preview")
-                        df_d = df_d[:min(df_d.shape[0], df_n.shape[0])]
-                        df_n = df_n[:min(df_d.shape[0], df_n.shape[0])]
+                    # df_d_copy = df_d
+                    # if df_d.shape[0] != df_n.shape[0]:
+                    #     print("WARNING: data rows are missing/not equivalent -- Trimming to allow preview")
+                    #     df_d_copy = df_d[:min(df_d.shape[0], df_n.shape[0])]
+                    #     df_n = df_n[:min(df_d.shape[0], df_n.shape[0])]
 
-                    print(policy)
-                    print(df_d.shape)
-                    print(df_d.iloc[1:5])
-                    print('********************** ')
-                    print(df_n.shape)
-                    print(df_n.iloc[1:5])
+                    # print(policy)
+                    # print(df_d_copy.shape)
+                    # print(df_d_copy.iloc[1:5])
+                    # print('********************** ')
+                    # print(df_n.shape)
+                    # print(df_n.iloc[1:5])
 
-                    try:
-                        df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d['avg-wait-time'].to_numpy()
-                        df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d['max-wait-time'].to_numpy()
-                        # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
-                    except ValueError as e:
-                        df.loc[row_mask, 'avg-ratio'] = np.nan
-                        df.loc[row_mask, 'max-ratio'] = np.nan
+                    # try:
+                    #     df.loc[row_mask, 'avg-ratio'] = df_n['avg-wait-time'].to_numpy() / df_d_copy['avg-wait-time'].to_numpy()
+                    #     df.loc[row_mask, 'max-ratio'] = df_n['max-wait-time'].to_numpy() / df_d_copy['max-wait-time'].to_numpy()
+                    #     # df.loc[df['cost-exponent'] == ce, 'dist-ratio'] = df_n['total-travel-distance'].to_numpy() / df_d['total-travel-distance'].to_numpy()
+                    # except ValueError as e:
+                    #     df.loc[row_mask, 'avg-ratio'] = np.nan
+                    #     df.loc[row_mask, 'max-ratio'] = np.nan
 
                     if ce < 0:
                         ce_str = ""
@@ -137,7 +139,7 @@ def parse_state_data(files, prefix, eta, p):
                     disp_str = policy_str + ef_str + " $\eta$="+str(eta) + ce_str
                     df.loc[row_mask, 'display-name'] = disp_str
 
-    df.dropna(inplace=True)
+    # df.dropna(inplace=True)
 
     # # filter out the base data
     # df = df.loc[
@@ -146,12 +148,12 @@ def parse_state_data(files, prefix, eta, p):
 
     # set the graph separations
     # graphs = [(0, 0.5, 'low'), (0.5, 1.0, 'high')]
-    graphs = [(0.3, 1.0, 'high')]
+    graphs = [(0.0, 1.0, 'high')]
 
     # plot vs cost exponent
     # df = df[(df['cost-exponent'] >= 1) * (df['cost-exponent'] <= 3)]
     num_colours = len(set(df['display-name']))
-    colour_list = distinctipy.get_colors(num_colours)  # colours.values(n)
+    colour_list = distinctipy.get_colors(num_colours, colorblind_type="Deuteranomaly")  # colours.values(n)
     # colour_list = ['#fa8888', '#ca1111', '#df6699', '#5555fa', '#0000ff', '#6662aa', '#11fc11', '#ffaa21']
 
     for l, h, label in graphs:
@@ -162,8 +164,8 @@ def parse_state_data(files, prefix, eta, p):
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
 
             # for df in df_list:
-            df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]
-            sb.lineplot(x='lambda', y=col, hue='display-name', data=df_slice, palette=colour_list, linewidth=2.5)
+            df_slice = df[(df['rho'] >= l) * (df['rho'] <= h)]
+            sb.lineplot(x='rho', y=col, hue='display-name', data=df_slice, palette=colour_list, linewidth=2.5)
 
             ax.set_xlabel("$\\rho$")
             ax.set_ylabel("Time (s)")
@@ -173,27 +175,39 @@ def parse_state_data(files, prefix, eta, p):
             fig.set_size_inches(width, height)
             fig.savefig(f'graphs/{prefix}plot_lamda_{col}_{label}.pdf')
 
-        for col in ['avg-ratio', 'max-ratio']:
+        # for col in ['avg-ratio', 'max-ratio']:
+        #     sb.set_theme(style="whitegrid")
+        #     fig, ax = plt.subplots()
+        #     fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+
+        #     # for df in df_list:
+        #     df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]
+        #     sb.lineplot(x='lambda', y=col, hue='display-name', data=df_slice, palette=colour_list, linewidth=2.5)
+
+        #     ax.set_xlabel("$\\rho$")
+        #     ax.set_ylabel("Ratio to Batch TSP ($\eta=1.0$)")
+        #     handles, labels = ax.get_legend_handles_labels()
+
+        #     ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent')
+        #     fig.set_size_inches(width, height)
+        #     fig.savefig(f'graphs/{prefix}plot_lamda_{col}_{label}.pdf')
+
+        for col in ['total-travel-distance', 'avg-task-dist']:
             sb.set_theme(style="whitegrid")
             fig, ax = plt.subplots()
             fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
 
             # for df in df_list:
-            df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]
-            sb.lineplot(x='lambda', y=col, hue='display-name', data=df_slice, palette=colour_list, linewidth=2.5)
+            df_slice = df[(df['rho'] >= l) * (df['rho'] <= h)]
+            sb.lineplot(x='rho', y=col, hue='display-name', data=df_slice, palette=colour_list, linewidth=2.5)
 
             ax.set_xlabel("$\\rho$")
-            ax.set_ylabel("Ratio to Batch TSP ($\eta=1.0$)")
+            ax.set_ylabel("Time (s)")
             handles, labels = ax.get_legend_handles_labels()
 
             ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent')
             fig.set_size_inches(width, height)
             fig.savefig(f'graphs/{prefix}plot_lamda_{col}_{label}.pdf')
-
-        # for col in ['total-travel-distance', 'avg-task-dist']:
-        #     colour_index = 0
-        #     fig, ax = plt.subplots()
-        #     fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
 
         #     # for df in df_list:
         #     df_slice = df[(df['lambda'] >= l) * (df['lambda'] <= h)]

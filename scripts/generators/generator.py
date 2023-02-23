@@ -39,6 +39,9 @@ class Generator:
         except KeyError:
             self.service_time = 0
 
+        # size = (self.max - self.min)
+        #
+        self.mean_distance = 0  # ignoring travel  # np.sqrt(2 * size*size)
         self.reset()
 
     def reset(self):
@@ -49,7 +52,7 @@ class Generator:
     def draw(self):
         pass
 
-    def draw_tasks(self, lam):
+    def draw_tasks(self, lam, field):
 
         # TODO: Replace calls to expovariate with an appropriate replacement that uses
         #       the internal generator
@@ -58,9 +61,16 @@ class Generator:
 
         # insert the initial tasks, available at the start of the sim
         for _ in range(self.initial_tasks):
+            location = self.draw()
+            for sector in field.sectors:
+                if sector.contains(location):
+                    sector = sector.id
+                    break
+
             new_task = Task(
                 id=len(tasks),
                 location=self.draw(),
+                sector=sector,
                 time=0,
                 # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
@@ -70,9 +80,15 @@ class Generator:
         sim_time = first_time
         while True:
             next_time = random.expovariate(lam)
+            location = self.draw()
+            for sector in field.sectors:
+                if sector.contains(location):
+                    sector = sector.id
+                    break
             new_task = Task(
                 id=len(tasks),
-                location=self.draw(),
+                location=location,
+                sector=sector,
                 time=sim_time,
                 # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
@@ -94,3 +110,6 @@ class Generator:
 
     def normal(self, loc, scale):
         return self.gen.normal(loc=loc, scale=scale)
+
+    def is_euclidean(self):
+        return True
