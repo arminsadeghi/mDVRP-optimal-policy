@@ -49,10 +49,12 @@ def get_distance_matrix(actors, tasks, field=None):
         for task_idx, task in enumerate(pending_tasks):
             task_idx += len(actors)
             if actor.last_task is None:
+                actor.path_start_index = actor.sector
                 # the actor is idle and sitting at the depot -- use that to calculate distances
                 distance_matrix[actor_idx, task_idx] = field.distances[actor.sector, task.index]
                 distance_matrix[task_idx, actor_idx] = field.distances[task.index, actor.sector]
             else:
+                actor.path_start_index = actor.last_task.index
                 # a little more complicated -- the actor is somewhere between the last task and the depot  - use a mix of both distances
                 distance_last_to_home = field.distances[actor.last_task.index, actor.sector]
                 distance_matrix[actor_idx, task_idx] = (field.distances[actor.sector, task.index] + distance_last_to_home * (1 - actor.ratio_complete))*(actor.ratio_complete) + \
@@ -106,9 +108,9 @@ def assign_tours_to_actors(actors, tasks, tours, task_indices, eta=1, eta_first=
             index = tours[actor_index][_i]
             task_index = task_indices[index]
             tasks[task_index].service_state = ServiceState.ASSIGNED
-            actors[actor_index].path.append(tasks[task_index], None)
+            actors[actor_index].path.append((tasks[task_index], None))
 
-        actors[actor_index].path.append(Task(-1, actors[actor_index].get_depot(), -1), None)
+        actors[actor_index].path.append((Task(-1, actors[actor_index].get_depot(), -1), None))
 
         # store the complete path as well for visualization purposes
         for index in tours[actor_index][1:]:
@@ -165,7 +167,14 @@ def assign_time_tour_to_actor(actor, tasks, distances, tours, task_indices, eta=
 
     # store the complete path as well for visualization purposes
     actor.complete_path = []
-    for index in tour[1:]:
+    if tour_step > 0:
+        tour_start = 1
+        tour_end = len(tour)
+    else:
+        tour_start = len(tour)-1
+        tour_end = 0
+    for _i in range(tour_start, tour_end, tour_step):
+        index = tour[_i]
         task_index = task_indices[index]
         actor.complete_path.append(tasks[task_index])
     actor.complete_path.append(Task(

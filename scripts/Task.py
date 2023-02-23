@@ -11,26 +11,32 @@ class ServiceState(Enum):
 
 
 class Task:
-    def __init__(self, id, location, time, sector=0, index=None, service_time=SERVICE_TIME):
+    def __init__(self, id, location, time, initial_wait=0, sector=0, index=None, service_time=SERVICE_TIME):
         self.id = id
         self.location = location
         self.sector = sector
         self.time = time
+        self.initial_wait = initial_wait
         self.index = index
         self.service_state = ServiceState.WAITING
         self.time_serviced = -1
         self.service_time = service_time
 
     def is_pending(self):
+        if self.service_state == ServiceState.WAITING or self.service_state == ServiceState.ASSIGNED:
+            return True
+        return False
+
+    def is_waiting(self):
         if self.service_state == ServiceState.WAITING:  # or self.service_state == ServiceState.ASSIGNED:
             return True
         return False
 
     def to_string(self):
-        return f'{self.id},{self.location[0]},{self.location[1]},{self.time},{self.time_serviced}'
+        return f'{self.id},{self.location[0]},{self.location[1]},{self.time},{self.time_serviced},{self.initial_wait}'
 
     def wait_time(self):
         if self.time_serviced == -1:
             raise ValueError("Task service not complete!")
 
-        return self.time_serviced - self.time
+        return self.time_serviced - self.time + self.initial_wait

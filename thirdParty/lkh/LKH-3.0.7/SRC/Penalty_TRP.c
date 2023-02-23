@@ -1,6 +1,7 @@
 #include "LKH.h"
 #include "Segment.h"
 #include <math.h>
+#include <assert.h>
 #include <stdio.h>
 
 GainType Penalty_TRP() {
@@ -23,8 +24,8 @@ GainType Penalty_TRP() {
       if (N->Id <= Dim || N->DepotId) {
         if (NextN->DepotId == 0) {
           DistanceSum += (C(N, NextN) - N->Pi - NextN->Pi) / Precision;
-          double service_time = 0;
-          int existing_wait = 0;
+          GainType service_time = 0;
+          GainType existing_wait = 0;
           if (NextN->Id <= Dim) {
             service_time = NextN->ServiceTime;
             existing_wait = NextN->Demand;
@@ -34,7 +35,14 @@ GainType Penalty_TRP() {
             existing_wait = NextN->FixedTo1->Demand;
           }
           DistanceSum += service_time / Precision;
-          P += pow(DistanceSum + existing_wait / Precision, 1.5);
+
+          // TODO: RiskThreshold has been repurposed to allow passing in the cost exponent (way better than hard coding it)
+          //       but at some point, should be given it's own variable (but that requires rework all the way up to the
+          //       python interface.  That's going to have to wait...
+          double exponent = RiskThreshold != 0 ? (RiskThreshold / 10.0) : 1.0;
+          GainType oldP = P;
+          P += pow(DistanceSum + existing_wait / Precision, exponent);
+          assert( P > oldP );
 
           if (P > CurrentPenalty || (P == CurrentPenalty && CurrentGain <= 0)) {
             StartRoute = CurrentRoute;

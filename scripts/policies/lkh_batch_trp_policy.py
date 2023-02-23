@@ -25,7 +25,7 @@ def prep_tour(tasks):
 
     node = 0
     for task in tasks:
-        if task.is_pending():
+        if task.is_waiting():
             pending_tasks.append(task)
             task_indices.append(node)
             node += 1
@@ -33,7 +33,7 @@ def prep_tour(tasks):
     return pending_tasks, task_indices
 
 
-def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False, gamma=0):
+def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solver_time=30, service_time=0, cost_exponent=1, eta=1, eta_first=False):
     """tsp policy
 
     Args:
@@ -56,7 +56,7 @@ def policy(actors, tasks, field, new_task_added=False, current_time=0, max_solve
         return
 
     tours = solve_trp('DVR TSP', 'Distance between Pending Tasks', idle_actors[0].pos, pending_tasks,
-                      simulation_time=current_time, mean_service_time=service_time, scale_factor=1000.0)
+                      simulation_time=current_time, mean_service_time=service_time, cost_exponent=cost_exponent, scale_factor=10000.0)
 
     # tour depot (the actor) is being dropped -- push it back in...
     for tour in tours:
