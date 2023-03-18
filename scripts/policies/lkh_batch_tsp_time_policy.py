@@ -1,7 +1,6 @@
 '''
 TSP policy that find the optimal multi robot TSP on the unserviced tasks
 '''
-from copy import deepcopy
 from policies.util import get_distance_matrix, assign_time_tour_to_actor
 from random import randint, shuffle
 from time import time
