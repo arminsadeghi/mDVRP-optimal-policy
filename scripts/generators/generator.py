@@ -27,6 +27,10 @@ class Generator:
         except KeyError:
             self.max_time = None
         try:
+            self.max_initial_wait = kwargs['max_initial_wait']
+        except KeyError:
+            self.max_initial_wait = 0
+        try:
             self.initial_tasks = kwargs['initial_tasks']
         except KeyError:
             self.initial_tasks = 0
@@ -52,7 +56,7 @@ class Generator:
     def draw(self):
         pass
 
-    def draw_tasks(self, lam, field):
+    def draw_tasks(self, lam):
 
         # TODO: Replace calls to expovariate with an appropriate replacement that uses
         #       the internal generator
@@ -62,17 +66,13 @@ class Generator:
         # insert the initial tasks, available at the start of the sim
         for _ in range(self.initial_tasks):
             location = self.draw()
-            for sector in field.sectors:
-                if sector.contains(location):
-                    sector = sector.id
-                    break
 
             new_task = Task(
                 id=len(tasks),
                 location=self.draw(),
-                sector=sector,
+                cluster_id=None,
                 time=0,
-                # TODO: Fixing service time variance proportional to specified time
+                initial_wait=self.gen.uniform()*self.max_initial_wait,
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
             )
             tasks.append(new_task)
@@ -81,16 +81,12 @@ class Generator:
         while True:
             next_time = random.expovariate(lam)
             location = self.draw()
-            for sector in field.sectors:
-                if sector.contains(location):
-                    sector = sector.id
-                    break
             new_task = Task(
                 id=len(tasks),
                 location=location,
-                sector=sector,
+                cluster_id=None,
                 time=sim_time,
-                # TODO: Fixing service time variance proportional to specified time
+                initial_wait=0,  # no latent time
                 service_time=self.gen.normal(self.service_time, 0.1*self.service_time)
             )
             tasks.append(new_task)

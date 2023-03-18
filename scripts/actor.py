@@ -5,11 +5,11 @@ from Task import Task, ServiceState
 
 
 class Actor:
-    def __init__(self, id=0, pos=[0, 0], sector=None, depot=[0.5, 0.5], speed=1.0, service_time=1, euclidean=True, screen=None):
+    def __init__(self, id=0, pos=[0, 0], cluster_id=None, depot=[0.5, 0.5], speed=1.0, service_time=1, euclidean=True, screen=None):
         self.id = id
         self.pos = pos
         self.depot = depot
-        self.sector = sector
+        self.cluster_id = cluster_id
         self.path = []
         self.complete_path = []
         self.speed = speed
@@ -30,11 +30,12 @@ class Actor:
         self.last_task = None
         self.euclidean = euclidean
         self.path_start_index = None
+        self.current_sector = 0
 
-    def assign(self, sector, depot=None):
-        self.sector = sector
+    def assign(self, cluster, depot=None):
+        self.cluster_id = cluster.id
         if depot is None:
-            self.depot = self.sector.get_centroid()
+            self.depot = cluster.get_centroid()
         else:
             self.depot = depot
 
