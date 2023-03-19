@@ -68,7 +68,7 @@ class Policy:
     def __next_sector(self, actor):
         actor.current_sector = (actor.current_sector + 1) % self.sectors
 
-    def __prep_tour(self, actor, tasks, field):
+    def __prep_tour(self, actor, actor_start_index, tasks, field):
 
         # Node indices start at 1 and the first index is the position of the actor
         task_indices = [-1, -1]
@@ -92,7 +92,7 @@ class Policy:
 
             self.__next_sector(actor=actor)
 
-        distances, _ = get_distance_matrix([actor,], tasks=pending_tasks, field=field)
+        distances, _ = get_distance_matrix(actor, actor_start_index=actor_start_index, tasks=pending_tasks, field=field)
 
         return pending_tasks, distances, task_indices
 
@@ -107,13 +107,15 @@ class Policy:
         if actor.is_busy():
             return
 
-        tasks, distances, task_indices = self.__prep_tour(actor, tasks, field=field)
+        path_start_index, actor_pos = actor.get_nearest_location()
+
+        tasks, distances, task_indices = self.__prep_tour(actor, actor_start_index=path_start_index, tasks=tasks, field=field)
         if not len(tasks):
             return False
 
         tours = solve_time_tsp('DVR TSP', 'Distance between Pending Tasks', distances, scale_factor=100.0)
 
-        assign_time_tour_to_actor(actor, tasks=tasks, distances=distances, tour=tours[0], task_indices=task_indices,
+        assign_time_tour_to_actor(actor, actor_pos=actor_pos, actor_start_index=path_start_index, tasks=tasks, distances=distances, field=field, tour=tours[0], task_indices=task_indices,
                                   eta=self.eta, eta_first=self.eta_first)
         self.__next_sector(actor)
 

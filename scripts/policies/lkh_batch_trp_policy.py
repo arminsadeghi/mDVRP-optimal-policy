@@ -85,7 +85,7 @@ class Policy:
             tour.insert(0, 1)
 
         if self.check_tour:
-            chk_distance_matrix, _ = get_distance_matrix([actor,], pending_tasks)
+            chk_distance_matrix, _ = get_distance_matrix(actor, tasks=pending_tasks)
             chk_distance_matrix = pad(chk_distance_matrix, 1)
 
             lkh_cost = tour_cost(

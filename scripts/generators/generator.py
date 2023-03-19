@@ -101,6 +101,13 @@ class Generator:
 
         return tasks, first_time
 
+    def get_detailed_path(self, start_index, end_index):
+        return None
+
+    # in the euclidean plane, we can be 'anywhere'
+    def get_nearest_location(self, x, y):
+        return None, [x, y]
+
     def poisson(self, lam):
         return self.gen.poisson(lam=lam)
 

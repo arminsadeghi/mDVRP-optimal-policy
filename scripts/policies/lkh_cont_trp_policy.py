@@ -21,16 +21,6 @@ class Policy:
             self.service_time = 0
 
         try:
-            self.eta = args['eta']
-        except KeyError:
-            self.eta = 1
-
-        try:
-            self.eta_first = args['eta_first']
-        except KeyError:
-            self.eta_first = False
-
-        try:
             self.cost_exponent = args['cost_exponent']
         except KeyError:
             self.cost_exponent = 1
@@ -43,15 +33,21 @@ class Policy:
         task_indices = [-1, -1]
 
         node = 0
+        at_least_one_waiting = False
         for task in tasks:
             # TODO: This will cause problems with actors stealing tasks from each other -- should check that the task is
             #       assigned to this particular actor.  Next time....
             if task.is_pending():
+                if task.is_waiting():
+                    at_least_one_waiting = True
                 pending_tasks.append(task)
                 task_indices.append(node)
                 node += 1
 
-        return pending_tasks, task_indices
+        if not at_least_one_waiting:
+            return [], [], False
+
+        return pending_tasks, task_indices, at_least_one_waiting
 
     def policy(self, actor, tasks, field, current_time=0):
         """tsp policy
@@ -61,11 +57,11 @@ class Policy:
             tasks (_type_): the tasks arrived
         """
 
-        pending_tasks, task_indices = self.__prep_tour(tasks)
-        if not len(pending_tasks):
+        tasks, task_indices, new_task_arrived = self.__prep_tour(tasks)
+        if not len(tasks) or not new_task_arrived:
             return
 
-        tours = solve_trp('DVR TSP', 'Distance between Pending Tasks', actor.pos, pending_tasks,
+        tours = solve_trp('DVR TSP', 'Distance between Pending Tasks', actor.pos, tasks,
                           simulation_time=current_time, mean_service_time=self.service_time, cost_exponent=self.cost_exponent,
                           scale_factor=10000.0)
 
@@ -73,7 +69,7 @@ class Policy:
         for tour in tours:
             tour.insert(0, 1)
 
-        assign_tour_to_actor(actor, pending_tasks, tours[0], task_indices, eta=self.eta, eta_first=self.eta_first)
+        assign_tour_to_actor(actor, tasks, tours[0], task_indices, eta=self.eta, eta_first=self.eta_first)
         return False
 
 

@@ -49,51 +49,51 @@ class DataLoader():
 
         self.reset()
 
-    # def reassign_sectors(self):
-    #     # divide the space into equal angles
-    #     angles = np.linspace(0, 2*np.pi, self.sectors + 1)[:-1]
-    #     inc = 2 * np.pi / 2000
+    def reassign_sectors(self):
+        # divide the space into equal angles
+        angles = np.linspace(0, 2*np.pi, self.sectors + 1)[:-1]
+        inc = 2 * np.pi / 2000
 
-    #     def calc_lines(angles):
-    #         lines = []
-    #         sx = self.tasks.iloc[0]['LOC_LONG']
-    #         sy = self.tasks.iloc[0]['LOC_LAT']
-    #         for i in range(len(angles)):
-    #             ex = sx + np.cos(angles[i]) * 0.025
-    #             ey = sy + np.sin(angles[i]) * 0.025
-    #             lines.append(((sx, sy), (ex, ey)))
-    #         return lines
+        def calc_lines(angles):
+            lines = []
+            sx = self.tasks.iloc[0]['LOC_LONG']
+            sy = self.tasks.iloc[0]['LOC_LAT']
+            for i in range(len(angles)):
+                ex = sx + np.cos(angles[i]) * 0.025
+                ey = sy + np.sin(angles[i]) * 0.025
+                lines.append(((sx, sy), (ex, ey)))
+            return lines
 
-    #     lines = calc_lines(angles=angles)
+        lines = calc_lines(angles=angles)
 
-    #     # Positive if left, neg if right
-    #     def side(line, px, py):
-    #         v1, v2 = line
-    #         return (v2[0] - v1[0]) * (py - v1[1]) - (px - v1[0]) * (v2[1] - v1[1])
+        # Positive if left, neg if right
+        def side(line, px, py):
+            v1, v2 = line
+            return (v2[0] - v1[0]) * (py - v1[1]) - (px - v1[0]) * (v2[1] - v1[1])
 
-    #     def calc_sector(lines, px, py):
-    #         for i in range(len(lines)):
-    #             next = (i + 1) % len(lines)
-    #             if side(lines[i], px, py) >= 0 and side(lines[next], px, py) < 0:
-    #                 return i
+        def calc_sector(lines, px, py):
+            for i in range(len(lines)):
+                next = (i + 1) % len(lines)
+                if side(lines[i], px, py) >= 0 and side(lines[next], px, py) < 0:
+                    return i
 
-    #     while True:
-    #         self.tasks['CLUSTER'] = [calc_sector(lines, px=x, py=y) for x, y in zip(self.tasks['LOC_LONG'], self.tasks['LOC_LAT'])]
-    #         counts = self.tasks['CLUSTER'].value_counts()
-    #         largest = counts.index[0]
-    #         smallest = counts.index[-1]
-    #         print(counts, largest, smallest)
-    #         if counts[largest] - counts[smallest] <= max(1, len(self.tasks) * 0.01):
-    #             break
+        while True:
+            self.tasks['CLUSTER'] = [calc_sector(lines, px=x, py=y) for x, y in zip(self.tasks['LOC_LONG'], self.tasks['LOC_LAT'])]
+            counts = self.tasks['CLUSTER'].value_counts()
+            largest = counts.index[0]
+            smallest = counts.index[-1]
+            print(counts, largest, smallest)
+            if counts[largest] - counts[smallest] <= max(1, len(self.tasks) * 0.01):
+                break
 
-    #         sign = -1
-    #         for a in range(self.sectors):
-    #             candidate = int((largest + a + 1) % self.sectors)
-    #             angles[candidate] += sign * inc
-    #             if candidate == smallest:
-    #                 sign = 1
+            sign = -1
+            for a in range(self.sectors):
+                candidate = int((largest + a + 1) % self.sectors)
+                angles[candidate] += sign * inc
+                if candidate == smallest:
+                    sign = 1
 
-    #         lines = calc_lines(angles)
+            lines = calc_lines(angles)
 
     def reset(self):
         # TODO: Stopgap measure to set global seed here as well since some tasks are still using the random module.
@@ -105,25 +105,25 @@ class DataLoader():
         # if self.centralized and self.sectors > 1:
         #     self.reassign_sectors()
 
-        distance_df = pd.read_csv(".".join(self.data_source.split('.')[:-2] + ['distances', 'csv']))
-        pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
+        self.distance_df = pd.read_csv(".".join(self.data_source.split('.')[:-2] + ['distances', 'csv']))
+        pivot_df = self.distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
         full_index = pivot_df.index.union(pivot_df.columns)
         self.distances = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0.0).to_numpy()
-        self.mean_distance = distance_df['TRAVEL_TIME'].mean()
+        self.mean_distance = self.distance_df['TRAVEL_TIME'].mean()
 
-        if len(self.tasks) < 50:
-            pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
-            full_index = pivot_df.index.union(pivot_df.columns)
-            self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
+        # get random set of streets for visual
+        df_sampled = self.distance_df.sample(250)
+        pivot_df = df_sampled.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
+        full_index = pivot_df.index.union(pivot_df.columns)
+        self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
 
-            # TODO: LIMITING mapping to less than 50 destinations -- gets pretty busy otherwise...
-            for r in range(self.paths.shape[0]):
-                for c in range(self.paths.shape[1]):
-                    if self.paths[r, c] == 0:
-                        self.paths[r, c] = None
-                    else:
-                        locations = [loc for loc in self.paths[r, c].split(';')]
-                        self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
+        for r in range(self.paths.shape[0]):
+            for c in range(self.paths.shape[1]):
+                if self.paths[r, c] == 0:
+                    self.paths[r, c] = None
+                else:
+                    locations = [loc for loc in self.paths[r, c].split(';')]
+                    self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
 
         self.field = DataField(self.tasks, self.distances, self.centralized)
 
@@ -184,6 +184,29 @@ class DataLoader():
 
     def is_euclidean(self):
         return False
+
+    def get_detailed_path(self, start_index, end_index):
+        if start_index == end_index:
+            return None
+        waypoints = self.distance_df.loc[(self.distance_df['SRC_INDEX'] == start_index) & (
+            self.distance_df['DST_INDEX'] == end_index)]['SCALED_WAYPOINTS'].values[0]
+        locations = [loc for loc in waypoints.split(';')]
+        return [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
+
+    def get_nearest_location(self, cluster, x, y):
+        closest_row = None
+        closest_index = None
+        closest_dist = np.inf
+        local_tasks = self.tasks.loc[self.tasks['CLUSTER']==cluster]
+        for index, row in local_tasks.iterrows():
+            dx = x - row['X']
+            dy = y - row['Y']
+            dist = dx * dx + dy * dy
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_row = row
+                closest_index = index
+        return closest_index, [closest_row['X'], closest_row['Y']]
 
 
 def get_generator_fn():

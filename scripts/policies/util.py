@@ -10,16 +10,15 @@ def euc_distance(task1, task2):
     )
 
 
-def get_distance_matrix(actors, tasks, field=None):
+def get_distance_matrix(actor, tasks, field=None, actor_start_index=None):
 
     if field is None or field.is_euclidean():
         task_locations = []
         task_indices = []
-        for actor in actors:
-            task_locations.append(
-                actor.pos
-            )
-            task_indices.append(-1)
+        task_locations.append(
+            actor.pos
+        )
+        task_indices.append(-1)
 
         for task in tasks:
             if task.is_pending():
@@ -42,34 +41,23 @@ def get_distance_matrix(actors, tasks, field=None):
 
         distance_matrix = np.zeros([len(pending_tasks)+1, len(pending_tasks)+1])
         task_indices = []
-        actor = actors[0]
         actor_idx = 0
+
+        if actor_start_index is None:
+            actor_start_index = actor.cluster_id
 
         task_indices.append(-1)
         for task_idx, task in enumerate(pending_tasks):
-            task_idx += len(actors)
-            if actor.last_task is None:
-                actor.path_start_index = actor.cluster_id
-                # the actor is idle and sitting at the depot -- use that to calculate distances
-                distance_matrix[actor_idx, task_idx] = field.distances[actor.cluster_id, task.index]
-                distance_matrix[task_idx, actor_idx] = field.distances[task.index, actor.cluster_id]
-            else:
-                actor.path_start_index = actor.last_task.index
-                # a little more complicated -- the actor is somewhere between the last task and the depot  - use a mix of both distances
-                distance_last_to_home = field.distances[actor.last_task.index, actor.cluster_id]
-                distance_matrix[actor_idx, task_idx] = (field.distances[actor.cluster_id, task.index] + distance_last_to_home * (1 - actor.ratio_complete))*(actor.ratio_complete) + \
-                                                       (field.distances[actor.last_task.index, task.index] +
-                                                        distance_last_to_home * actor.ratio_complete)*(1.0-actor.ratio_complete)
-                distance_matrix[task_idx, actor_idx] = (field.distances[task.index, actor.cluster_id] + distance_last_to_home * (1 - actor.ratio_complete))*(actor.ratio_complete) + \
-                                                       (field.distances[task.index, actor.last_task.index] +
-                                                        distance_last_to_home * actor.ratio_complete)*(1.0-actor.ratio_complete)
+            task_idx += 1
+            distance_matrix[actor_idx, task_idx] = field.distances[actor_start_index, task.index]
+            distance_matrix[task_idx, actor_idx] = field.distances[task.index, actor_start_index]
 
         # now complete the rest of the tasks
         for src_idx, src_task in enumerate(pending_tasks):
             task_indices.append(task.id)
-            src_idx += len(actors)
+            src_idx += 1
             for dst_idx, dst_task in enumerate(pending_tasks):
-                dst_idx += len(actors)
+                dst_idx += 1
                 distance_matrix[src_idx, dst_idx] = field.distances[src_task.index, dst_task.index]
 
     return distance_matrix, task_indices
@@ -116,7 +104,7 @@ def assign_tour_to_actor(actor, tasks, tour, task_indices, eta=1, eta_first=Fals
     actor.complete_path.append(Task(-1, actor.get_depot(), -1))
 
 
-def assign_time_tour_to_actor(actor, tasks, distances, tour, task_indices, eta=1, eta_first=False):
+def assign_time_tour_to_actor(actor, actor_pos, actor_start_index, tasks, distances, field, tour, task_indices, eta=1, eta_first=False):
     # reset the actor's path
     actor.path = []
 
@@ -138,16 +126,34 @@ def assign_time_tour_to_actor(actor, tasks, distances, tour, task_indices, eta=1
 
     print(f"assigning a tour of {tour_len} stops starting at {tour_start}/{len(tour)}")
 
+    # reset the actor state
+    actor.pos = actor_pos
+    actor.current_goal = None
+    actor.last_task = Task(
+        id=-1,
+        location=actor_pos,
+        cluster_id=actor.cluster_id,
+        time=0,
+        index=actor_start_index,
+        service_time=0
+    )
+
     # The actor is always the first row/column of the distance matrix
     actor_idx = 0
     last_index = actor_idx
+    last_task_index = None
+
+    # reset the path time
     for _i in range(tour_start, tour_end, tour_step):
         index = tour[_i]
         task_index = task_indices[index]
         distance_index = task_index + 1
         tasks[task_index].service_state = ServiceState.ASSIGNED
+        last_task_index = task_index
         actor.path.append((tasks[task_index], distances[last_index, distance_index]))
         last_index = distance_index
+
+    distance_to_home = field.distances[tasks[last_task_index].index, actor.cluster_id]
 
     # add a node to the path to send the actor back to base
     actor.path.append((Task(
@@ -157,7 +163,7 @@ def assign_time_tour_to_actor(actor, tasks, distances, tour, task_indices, eta=1
         time=0,
         index=actor.cluster_id,
         service_time=0
-    ), distances[last_index, actor_idx]))
+    ), distance_to_home))
 
     # store the complete path as well for visualization purposes
     actor.complete_path = []
