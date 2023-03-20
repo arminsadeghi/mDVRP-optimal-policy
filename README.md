@@ -1,5 +1,11 @@
 # mDVRP
 
+## A study of allocation and scheduling for the Dynamic Vehicle Routing Problem
+
+<p align="center">
+  <img src="./docs/montreal_six.gif">
+</p>
+
 The optimal policy for the mDVRP problem for any arrival rate.  Task generation is controlled by selecting a generator function in *scripts/generators*.  The policy followed is selected from *scripts/policies*.
 
 ## Preliminaries
