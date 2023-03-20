@@ -69,6 +69,7 @@ def simulate(args, delivery_log=None):
             'eta': args.eta,
             'eta_first': args.eta_first,
             'gamma': args.gamma,
+            'sectors': args.sectors,
         },
         generator_args=generator_args,
         num_actors=args.actors,
@@ -78,7 +79,6 @@ def simulate(args, delivery_log=None):
         max_tasks=args.max_tasks,
         max_time=args.max_time,
         record_data=args.record_data,
-        sectors=args.sectors,
         centralized=args.centralized,
         delivery_log=delivery_log
     )

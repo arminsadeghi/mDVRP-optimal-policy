@@ -28,7 +28,7 @@ class Sector:
             if self.euclidean:
                 return self.polygon.intersects(Point(obj.location[0], obj.location[1]))
             else:
-                return self.id == obj.sector
+                return self.id == obj.cluster_id
 
     def is_near_centre(self, location, tolerance=0.01):
         dist = Point(location[0], location[1]).distance(self.centroid)
@@ -49,7 +49,7 @@ class Field:
         self.count = count
         self.centre = centre
 
-        self.sectors = []
+        self.clusters = []
         self.sector_index = 0
 
         for i, v in enumerate(vertices):
@@ -91,11 +91,11 @@ class Field:
                 cv = nv
 
             sv.append(centre)
-            self.sectors.append(Sector(id=count, polygon=Polygon(sv)))
+            self.clusters.append(Sector(id=count, polygon=Polygon(sv)))
 
     def next_sector(self):
         self.sector_index = (self.sector_index + 1) % self.count
-        return self.sectors[self.sector_index]
+        return self.clusters[self.sector_index]
 
     def is_euclidean(self):
         # TODO: All data files are assumed to be non-euclidean for the time being -- distances are encoded in
@@ -105,25 +105,25 @@ class Field:
 
 class DataField:
     def __init__(self, df, distances, centralized=False) -> None:
-        self.sectors = []
+        self.clusters = []
         self.sector_index = 0
         self.count = 0
         self.distances = distances
 
         if centralized:
-            sectors = set(df['CLUSTER'])
-            self.count = len(sectors) - 1  # skip the depot
+            clusters = set(df['CLUSTER'])
+            self.count = len(clusters) - 1  # skip the depot
             for i in range(self.count):
-                self.sectors.append(Sector(i, centroid=(df.iloc[0]['X'], df.iloc[0]['Y']), euclidean=False))
+                self.clusters.append(Sector(i, centroid=(df.iloc[0]['X'], df.iloc[0]['Y']), euclidean=False))
             self.centre = (df.iloc[0]['X'], df.iloc[0]['Y'])
         else:
             for i, row in df.loc[df['DEPOT'] == True].iterrows():
-                self.sectors.append(Sector(id=self.count, centroid=(row['X'], row['Y']), euclidean=False))
+                self.clusters.append(Sector(id=self.count, centroid=(row['X'], row['Y']), euclidean=False))
                 self.count += 1
 
     def next_sector(self):
         self.sector_index = (self.sector_index + 1) % self.count
-        return self.sectors[self.sector_index]
+        return self.clusters[self.sector_index]
 
     def is_euclidean(self):
         # TODO: All data files are assumed to be non-euclidean for the time being -- distances are encoded in
@@ -134,14 +134,14 @@ class DataField:
 if __name__ == '__main__':
     n = 3
     square = [[0, 0], [1, 0], [1, 1], [0, 1]]
-    sectors = Field(square, [0.5, 0.5], n)
+    clusters = Field(square, [0.5, 0.5], n)
 
     poly_sq = Polygon(square)
     poly_sects = []
     centroids = []
 
     for _ in range(n):
-        sector = sectors.next_sector()
+        sector = clusters.next_sector()
 
         poly_sects.append(sector.get_poly())
         centroids.append(sector.get_centroid())
