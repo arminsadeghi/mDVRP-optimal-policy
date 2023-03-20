@@ -82,7 +82,9 @@ class Simulation:
                 service_time=self.service_time,
                 speed=self.actor_speed,
                 euclidean=self.generator.is_euclidean(),
-                screen=self.screen
+                screen=self.screen,
+                path_fn=self.get_detailed_path,
+                location_fn=self.get_nearest_location
             ))
 
         self.serviced_tasks = []
@@ -110,6 +112,7 @@ class Simulation:
 
     def load_policy(self, policy_name, policy_args):
         # load the policy
+        self.policy_args = policy_args
         self.policy_name = "{}_policy".format(policy_name)
         policy_mod = import_module('.'+self.policy_name, package='policies')
         self._policy = policy_mod.get_policy(args=policy_args)
@@ -121,6 +124,14 @@ class Simulation:
         gen_mod = import_module('.'+self.generator_name, package='generators')
         generator_fn = gen_mod.get_generator_fn()
         self.generator = generator_fn(**self.generator_args)
+
+    def get_detailed_path(self, start_index, end_index):
+        if self.generator is None:
+            return None
+        return self.generator.get_detailed_path(start_index=start_index, end_index=end_index)
+
+    def get_nearest_location(self, cluster_id, location):
+        return self.generator.get_nearest_location(cluster_id, *location)
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
@@ -214,7 +225,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 1200.0
+        max_lateness = 2000.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -234,7 +245,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness),
                     outlines=False
                 )
 
@@ -250,7 +261,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness),
                     outlines=True
                 )
 
@@ -431,7 +442,7 @@ class Simulation:
 
         edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
 
-        # self._draw_all_roads()
+        self._draw_all_roads()
         try:
             paths = self.generator.paths
             for path_set in paths:
@@ -499,6 +510,8 @@ class Simulation:
                         ax.add_patch(patch)
             except AttributeError:
                 pass
+            except IndexError:
+                pass  # trying to draw a road that isn't in the sample set
 
             # self._draw_actor_depot(actor)
             edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
@@ -603,7 +616,7 @@ class Simulation:
                     cluster_tasks.append(task)
 
             if len(cluster_tasks):
-                print("[{:.2f}]: Currently {} tasks pending for cluster {}".format(round(self.sim_time, 2), len(cluster_tasks), actor.cluster_id))
+                # print("[{:.2f}]: Currently {} tasks pending for cluster {}".format(round(self.sim_time, 2), len(cluster_tasks), actor.cluster_id))
                 self._policy(actor=actor, tasks=cluster_tasks, field=self.field, current_time=self.sim_time)
 
         self._total_travel_distance = 0
@@ -651,9 +664,9 @@ class Simulation:
                 self.plot_initial_conditions()
 
             if self.record_data:
-                eta_str = str(self.eta) + 'ef' if self.eta_first else str(self.eta) + 'e'
+                eta_str = str(self.policy_args['eta']) + ('ef' if self.policy_args['eta_first'] else 'e')
                 pygame.image.save(
-                    self.screen, f'images/screen_{self.policy_name}_{self.num_sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
+                    self.screen, f"images/screen_{self.policy_name}_{self.policy_args['sectors']}s_{eta_str}_{self.policy_args['cost_exponent']}p_{self.pois_lambda}l_{self.ticks:06d}.png")
 
         # if self._show_sim:
         #     self._show_sim_info()
