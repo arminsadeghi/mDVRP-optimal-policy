@@ -42,7 +42,10 @@ GainType Penalty_TRP() {
           double exponent = RiskThreshold != 0 ? (RiskThreshold / 10.0) : 1.0;
           GainType oldP = P;
           P += pow(DistanceSum + existing_wait / Precision, exponent);
-          assert( P > oldP );
+          if( P < oldP ) {
+            printf("ERROR -- WRAPPED P: %lld, OLD_P: %lld, Exponent: %f\n", P, oldP, exponent );
+            assert( P >= oldP );
+          }
 
           if (P > CurrentPenalty || (P == CurrentPenalty && CurrentGain <= 0)) {
             StartRoute = CurrentRoute;
