@@ -43,10 +43,6 @@ class DataLoader():
         except KeyError:
             self.service_time = 0
         try:
-            self.sectors = kwargs['sectors']
-        except KeyError:
-            self.sectors = 1
-        try:
             self.centralized = kwargs['centralized']
         except KeyError:
             self.centralized = False
@@ -106,28 +102,28 @@ class DataLoader():
 
         self.tasks = pd.read_csv(self.data_source)
 
-        if self.centralized and self.sectors > 1:
-            self.reassign_sectors()
+        # if self.centralized and self.sectors > 1:
+        #     self.reassign_sectors()
 
-        distance_df = pd.read_csv(".".join(self.data_source.split('.')[:-2] + ['distances', 'csv']))
-        pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
+        self.distance_df = pd.read_csv(".".join(self.data_source.split('.')[:-2] + ['distances', 'csv']))
+        pivot_df = self.distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='TRAVEL_TIME')
         full_index = pivot_df.index.union(pivot_df.columns)
         self.distances = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0.0).to_numpy()
-        self.mean_distance = distance_df['TRAVEL_TIME'].mean()
+        self.mean_distance = self.distance_df['TRAVEL_TIME'].mean()
 
-        if len(self.tasks) < 50:
-            pivot_df = distance_df.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
-            full_index = pivot_df.index.union(pivot_df.columns)
-            self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
+        # get random set of streets for visual
+        df_sampled = self.distance_df.sample(250)
+        pivot_df = df_sampled.pivot(index='SRC_INDEX', columns='DST_INDEX', values='SCALED_WAYPOINTS')
+        full_index = pivot_df.index.union(pivot_df.columns)
+        self.paths = pivot_df.reindex(labels=full_index, axis=0).reindex(labels=full_index, axis=1).fillna(0).to_numpy()
 
-            # TODO: LIMITING mapping to less than 50 destinations -- gets pretty busy otherwise...
-            for r in range(self.paths.shape[0]):
-                for c in range(self.paths.shape[1]):
-                    if self.paths[r, c] == 0:
-                        self.paths[r, c] = None
-                    else:
-                        locations = [loc for loc in self.paths[r, c].split(';')]
-                        self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
+        for r in range(self.paths.shape[0]):
+            for c in range(self.paths.shape[1]):
+                if self.paths[r, c] == 0:
+                    self.paths[r, c] = None
+                else:
+                    locations = [loc for loc in self.paths[r, c].split(';')]
+                    self.paths[r, c] = [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
 
         self.field = DataField(self.tasks, self.distances, self.centralized)
 
@@ -137,7 +133,7 @@ class DataLoader():
         row = self.tasks.iloc[row_index]
         return row_index, (row['X'], row['Y']), row['CLUSTER']
 
-    def draw_tasks(self, lam, field=None):
+    def draw_tasks(self, lam):
 
         # TODO: Replace calls to expovariate with an appropriate replacement that uses
         #       the internal generator
@@ -146,16 +142,15 @@ class DataLoader():
 
         # insert the initial tasks, available at the start of the sim
         for _ in range(self.initial_tasks):
-            task_index, location, sector = self.draw()
+            task_index, location, cluster_id = self.draw()
 
             new_task = Task(
                 id=len(tasks),
                 location=location,
-                sector=sector,
+                cluster_id=cluster_id,
                 time=0,
                 initial_wait=self.gen.uniform()*self.max_initial_wait,
                 index=task_index,
-                # TODO: Fixing service time variance proportional to specified time
                 service_time=self.gen.normal(self.service_time, 0.3*self.service_time)
             )
             tasks.append(new_task)
@@ -163,11 +158,11 @@ class DataLoader():
         sim_time = first_time
         while True:
             next_time = random.expovariate(lam)
-            task_index, location, sector = self.draw()
+            task_index, location, cluster_id = self.draw()
             new_task = Task(
                 id=len(tasks),
                 location=location,
-                sector=sector,
+                cluster_id=cluster_id,
                 time=sim_time,
                 initial_wait=0,  # no latent time -- self.gen.uniform()*self.max_initial_wait,
                 index=task_index,
@@ -189,6 +184,29 @@ class DataLoader():
 
     def is_euclidean(self):
         return False
+
+    def get_detailed_path(self, start_index, end_index):
+        if start_index == end_index:
+            return None
+        waypoints = self.distance_df.loc[(self.distance_df['SRC_INDEX'] == start_index) & (
+            self.distance_df['DST_INDEX'] == end_index)]['SCALED_WAYPOINTS'].values[0]
+        locations = [loc for loc in waypoints.split(';')]
+        return [[float(x), float(y)] for x, y in [loc.split(':') for loc in locations]]
+
+    def get_nearest_location(self, cluster, x, y):
+        closest_row = None
+        closest_index = None
+        closest_dist = np.inf
+        local_tasks = self.tasks.loc[self.tasks['CLUSTER']==cluster]
+        for index, row in local_tasks.iterrows():
+            dx = x - row['X']
+            dy = y - row['Y']
+            dist = dx * dx + dy * dy
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_row = row
+                closest_index = index
+        return closest_index, [closest_row['X'], closest_row['Y']]
 
 
 def get_generator_fn():

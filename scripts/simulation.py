@@ -17,7 +17,7 @@ import colorsys
 class Simulation:
     def __init__(self, policy_name, policy_args=None, generator_name='uniform', generator_args=None, num_actors=1, pois_lambda=0.01, screen=None, service_time=SERVICE_TIME,
                  speed=ACTOR_SPEED, margin=SCREEN_MARGIN, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, sectors=1, centralized=False, delivery_log=None):
+                 max_time=MAX_SIMULATION_TIME, max_tasks=MAX_SERVICED_TASKS, record_data=False, centralized=False, delivery_log=None):
         self.actor_speed = speed
         self.pois_lambda = pois_lambda
         self.screen = screen
@@ -43,24 +43,13 @@ class Simulation:
 
         self.centralized = centralized
         if generator_args['data_source'] is None:
-            # split the environment...
-            self.vertices = [[0, 0], [1, 0], [1, 1], [0, 1]]
-            self.centre = [0.5, 0.5]
-            self.num_sectors = sectors
-            self.field = Field(self.vertices, self.centre, self.num_sectors)
-
             self.num_actors = num_actors
+            self.field = None
         else:
             self.field = self.generator.field
 
-            self.num_sectors = self.field.count
-            if self.centralized:
-                self.centre = self.field.centre
-                self.num_actors = num_actors
-            else:
-                self.num_actors = self.field.count
-
-        self.current_sector = self.field.next_sector()
+            self.num_clusters = self.field.count
+            self.num_actors = self.field.count
 
         # art objects
         self.actor_image = pygame.image.load('assets/car.svg')
@@ -74,29 +63,28 @@ class Simulation:
 
     def reset(self, task_list=None):
 
-        if not self.centralized and self.num_actors != self.num_sectors:
-            raise ValueError("ERROR: The number of actors must equal the number of sectors for non-central service!")
-
         self.actor_list = []
         for i in range(self.num_actors):
-            if self.centralized:
-                pos = self.field.centre
+            if self.field is None:
+                pos = [0.5, 0.5]
                 depot = pos
-                sector = 0
+                cluster_id = 0
             else:
-                sector = i
-                pos = self.field.sectors[sector].get_centroid()
+                cluster_id = i
+                pos = self.field.clusters[cluster_id].get_centroid()
                 depot = pos
 
             self.actor_list.append(Actor(
                 id=i+1,
                 pos=pos,
-                sector=sector,
+                cluster_id=cluster_id,
                 depot=depot,
                 service_time=self.service_time,
                 speed=self.actor_speed,
                 euclidean=self.generator.is_euclidean(),
-                screen=self.screen
+                screen=self.screen,
+                path_fn=self.get_detailed_path,
+                location_fn=self.get_nearest_location
             ))
 
         self.serviced_tasks = []
@@ -124,26 +112,10 @@ class Simulation:
 
     def load_policy(self, policy_name, policy_args):
         # load the policy
+        self.policy_args = policy_args
         self.policy_name = "{}_policy".format(policy_name)
         policy_mod = import_module('.'+self.policy_name, package='policies')
-        self._policy = policy_mod.policy
-        if policy_args is not None:
-            try:
-                self.cost_exponent = policy_args['cost_exponent']
-            except KeyError:
-                self.cost_exponent = 1
-            try:
-                self.eta = policy_args['eta']
-            except KeyError:
-                self.eta = 1
-            try:
-                self.eta_first = policy_args['eta_first']
-            except KeyError:
-                self.eta = False
-            try:
-                self.gamma = policy_args['gamma']
-            except KeyError:
-                self.gamma = 1
+        self._policy = policy_mod.get_policy(args=policy_args)
 
     def load_generator(self, generator_name, generator_args):
         # load the generator
@@ -152,6 +124,14 @@ class Simulation:
         gen_mod = import_module('.'+self.generator_name, package='generators')
         generator_fn = gen_mod.get_generator_fn()
         self.generator = generator_fn(**self.generator_args)
+
+    def get_detailed_path(self, start_index, end_index):
+        if self.generator is None:
+            return None
+        return self.generator.get_detailed_path(start_index=start_index, end_index=end_index)
+
+    def get_nearest_location(self, cluster_id, location):
+        return self.generator.get_nearest_location(cluster_id, *location)
 
     def _get_current_max_time(self):
         """get the wait time of unserviced task
@@ -197,11 +177,7 @@ class Simulation:
         are inserting one now.
         """
 
-        # TODO: Bit of a chicken and egg thing going on here as the field is created by the generator
-        #       in the data_loader case, but here otherwise.  But the generator apparently needs the
-        #       field to place tasks in their appropriate sector.  Passing it back in for now, and the
-        #       data_loader can just ignore it...
-        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda, self.field)
+        self.task_list, self.next_time = self.generator.draw_tasks(self.pois_lambda)
         # create an index into the list of tasks
         self.next_task = 0
 
@@ -249,7 +225,7 @@ class Simulation:
 
         INITIAL_TASK_SIZE = 10
 
-        max_lateness = 1200.0
+        max_lateness = 2000.0
         for task in self.task_list[::-1]:
 
             if task.service_state is ServiceState.SERVICED:
@@ -269,7 +245,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness),
                     outlines=False
                 )
 
@@ -285,7 +261,7 @@ class Simulation:
                 self._draw_task(
                     location=task_loc_screen,
                     color=(r, g, b, a),
-                    size=INITIAL_TASK_SIZE + sqrt(lateness) * 2,
+                    size=INITIAL_TASK_SIZE + sqrt(lateness),
                     outlines=True
                 )
 
@@ -466,7 +442,7 @@ class Simulation:
 
         edge_colour = [c/255.0 for c in BACKGROUND_PATH_COLOUR]
 
-        # self._draw_all_roads()
+        self._draw_all_roads()
         try:
             paths = self.generator.paths
             for path_set in paths:
@@ -534,6 +510,8 @@ class Simulation:
                         ax.add_patch(patch)
             except AttributeError:
                 pass
+            except IndexError:
+                pass  # trying to draw a road that isn't in the sample set
 
             # self._draw_actor_depot(actor)
             edge_colour = [c/255.0 for c in DEPOT_OUTLINE_COLOUR]
@@ -595,10 +573,6 @@ class Simulation:
             self.delivery_log.write(self.task_list[rval.id].to_string()+'\n')
             self.delivery_log.flush()
 
-        # # if the actor is now idle, move to the next sector
-        # if not self.actor_list[0].is_busy():
-        #     self.current_sector = self.field.next_sector()
-
     def tick(self, tick_time, max_simulation_time, max_tasks):
         """[summary]
         """
@@ -625,50 +599,25 @@ class Simulation:
         #       the simulation code.
         for actor in self.actor_list:
 
-            # TODO: HACK for DC Batch -- shortcut for everything else -- will break things if continous planning is required -- should
-            #       make this an auto-detect option
-            if actor.is_busy():
-                continue
+            # # TODO: HACK for DC Batch -- shortcut for everything else -- will break things if continous planning is required -- should
+            # #       make this an auto-detect option
+            # if actor.is_busy():
+            #     continue
 
-            sector_tasks = []
-            if self.centralized:
-                for _ in range(self.num_sectors):
-                    for task in self.task_list:
-                        if self.sim_time < task.time:
-                            break
+            cluster_tasks = []
+            for task in self.task_list:
+                if self.sim_time < task.time:
+                    break
 
-                        if not task.is_pending():
-                            continue
+                if not task.is_pending():
+                    continue
 
-                        if self.current_sector.contains(task):
-                            sector_tasks.append(task)
+                if self.field is None or actor.cluster_id == task.cluster_id:
+                    cluster_tasks.append(task)
 
-                    if len(sector_tasks):
-                        print("[{:.2f}]: Currently {} tasks pending for sector {}".format(
-                            round(self.sim_time, 2), len(sector_tasks), self.current_sector.id))
-                        break
-
-                    # nothing in this sector, check the next
-                    self.current_sector = self.field.next_sector()
-
-            else:
-                for task in self.task_list:
-                    if self.sim_time < task.time:
-                        break
-
-                    if not task.is_pending():
-                        continue
-
-                    if actor.sector == task.sector:
-                        sector_tasks.append(task)
-
-            if len(sector_tasks):
-                res = self._policy(actors=[actor,], tasks=sector_tasks, field=self.field, current_time=self.sim_time, service_time=self.service_time,
-                                   cost_exponent=self.cost_exponent, eta=self.eta, eta_first=self.eta_first)
-
-                if res and self.centralized:
-                    # assigned this sector, moving on...
-                    self.current_sector = self.field.next_sector()
+            if len(cluster_tasks):
+                # print("[{:.2f}]: Currently {} tasks pending for cluster {}".format(round(self.sim_time, 2), len(cluster_tasks), actor.cluster_id))
+                self._policy(actor=actor, tasks=cluster_tasks, field=self.field, current_time=self.sim_time)
 
         self._total_travel_distance = 0
         for actor_index in range(len(self.actor_list)):
@@ -693,7 +642,10 @@ class Simulation:
             #  draw the limits of the environment
             pygame.draw.rect(self.screen,
                              SCREEN_OUTLINE_COLOUR,
-                             (self._xmargin-self._border_offset, self._ymargin-self._border_offset, self._env_size+self._border_offset*2, self._env_size+self._border_offset*2), 2)
+                             (self._xmargin-self._border_offset,
+                              self._ymargin-self._border_offset,
+                              self._env_size+self._border_offset*2,
+                              self._env_size+self._border_offset*2), 2)
 
             # bar_cube_size = 20
             # num_waiting = self.next_task - len(self.serviced_tasks)
@@ -712,9 +664,9 @@ class Simulation:
                 self.plot_initial_conditions()
 
             if self.record_data:
-                eta_str = str(self.eta) + 'ef' if self.eta_first else str(self.eta) + 'e'
+                eta_str = str(self.policy_args['eta']) + ('ef' if self.policy_args['eta_first'] else 'e')
                 pygame.image.save(
-                    self.screen, f'images/screen_{self.policy_name}_{self.num_sectors}s_{eta_str}_{self.cost_exponent}p_{self.pois_lambda}l_{self.ticks:06d}.png')
+                    self.screen, f"images/screen_{self.policy_name}_{self.policy_args['sectors']}s_{eta_str}_{self.policy_args['cost_exponent']}p_{self.pois_lambda}l_{self.ticks:06d}.png")
 
         # if self._show_sim:
         #     self._show_sim_info()

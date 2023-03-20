@@ -11,10 +11,10 @@ class ServiceState(Enum):
 
 
 class Task:
-    def __init__(self, id, location, time, initial_wait=0, sector=0, index=None, service_time=SERVICE_TIME):
+    def __init__(self, id, location, time, initial_wait=0, cluster_id=0, index=None, service_time=SERVICE_TIME):
         self.id = id
         self.location = location
-        self.sector = sector
+        self.cluster_id = cluster_id
         self.time = time
         self.initial_wait = initial_wait
         self.index = index
@@ -28,7 +28,7 @@ class Task:
         return False
 
     def is_waiting(self):
-        if self.service_state == ServiceState.WAITING:  # or self.service_state == ServiceState.ASSIGNED:
+        if self.service_state == ServiceState.WAITING:
             return True
         return False
 
