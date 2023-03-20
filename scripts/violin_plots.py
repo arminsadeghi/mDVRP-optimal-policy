@@ -19,15 +19,17 @@ mpl.use('pdf')
 width = 8  # 3.487
 height = width / 1.5
 
+SHOW_BASELINES = True
 USE_MONTREAL_DATA = True
 ROBOTS = 6
 
 if USE_MONTREAL_DATA:
-    HEADER_STR = "DeliveryLog_montreal_six"
-    OUTPUT_PREFIX = "Montreal_RAL"
+    HEADER_STR = "DeliveryLog_montreal_ral"
+    PREFIX_STR = "Montreal_RAL"
 else:
     HEADER_STR = "DeliveryLog_ral"
-    OUTPUT_PREFIX = "RAL"
+    PREFIX_STR = "RAL"
+
 HEADER_SUBSTR = ""
 
 
@@ -122,6 +124,7 @@ def reconstruct_policy_label(tags, meta_data, offset):
         # return 'LKH-Batch-TRP'
     elif tags[offset-6] == 'tsp':
         if tags[offset-7] == 'batch':
+
             if meta_data['sectors'] > 1.0:
                 return '$\mathtt{DC}$-$\mathtt{BATCH}$'  # , $\eta=' + str(meta_data['eta']) + '$, $r=' + str(meta_data['sectors'])+'$'
             else:
@@ -228,7 +231,6 @@ def plot_comparison(files, mode='baselines'):
                 'lavender',
                 'slateblue',
 
-
                 'dodgerblue',
                 # 'bisque',
                 'linen'
@@ -259,20 +261,27 @@ def plot_comparison(files, mode='baselines'):
 
     elif mode == 'differentP':
         hue_order = [
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$1.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=1.1$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$1.5$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$1.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$2.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$2.0$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$2.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$2.5$',
+            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.05$ $p$=$3.0$',
             '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$3.0$',
             # '$c^p - \mathtt{BATCH}$, $\eta=0.2$, $p=5.0$',
-            '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$10.0$',
+            # '$c^p$-$\mathtt{BATCH}$ $\eta$=$0.2$ $p$=$10.0$',
         ]
 
         colours = [
-            'lightblue',
-            # 'slateblue',
-            # 'lavender',
+            'slateblue',
+            'lavender',
+            'darkorange',  # OURS
             'wheat',
+            'lightblue',
             'violet',
             # 'bisque',
             'aliceblue',
@@ -382,7 +391,7 @@ def plot_comparison(files, mode='baselines'):
 
             ax.legend(handles=handles, labels=labels, loc='upper left', title='Method/Exponent', title_fontsize=18, fontsize=16)
             fig.set_size_inches(width, height)
-            fig.savefig(OUTPUT_PREFIX+'_'+style+'_'+mode+'_plot_lamda_{}_{}.pdf'.format('WaitTime', label))
+            fig.savefig(PREFIX_STR+'_'+style+'_'+mode+'_plot_lamda_{}_{}.pdf'.format('WaitTime', label))
 
     # export_table(df, hues=hue_order)
     export_table2(df, hues=hue_order)
@@ -392,6 +401,8 @@ if __name__ == "__main__":
 
     path = 'results/'
     files = [path + '/' + f for f in listdir(path) if isfile(join(path, f))]
-    plot_comparison(files, 'baselines')
-    # plot_comparison(files, 'differentP')
+    if SHOW_BASELINES:
+        plot_comparison(files, 'baselines')
+    else:
+        plot_comparison(files, 'differentP')
     # plot_comparison(files, 'Variance')
