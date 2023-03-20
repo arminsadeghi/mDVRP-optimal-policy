@@ -199,7 +199,8 @@ def plot_comparison(files, mode='baselines'):
         if USE_MONTREAL_DATA:
             colours = [
                 'darkorange',
-                # 'wheat',
+                'wheat',
+                'lightsteelblue',
                 'royalblue',
                 'lavender',
                 'slateblue',
@@ -212,7 +213,8 @@ def plot_comparison(files, mode='baselines'):
 
             hue_order = [
                 '$\mathtt{PROPOSED}$',
-                # '$\mathtt{PROPOSED}$ $\eta$=$0.2$',
+                '$\mathtt{PROPOSED}$ $\eta$=$0.2$',
+                '$c^2$-$\mathtt{EVENT}$',
                 '$\mathtt{BATCH}$',
                 '$\mathtt{DC}$-$\mathtt{BATCH}$',
                 '$\eta$-$\mathtt{BATCH}$',
