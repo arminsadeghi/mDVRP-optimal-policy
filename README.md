@@ -1,4 +1,4 @@
-# mDVRP
+# Optimizing Task Waiting Times in Dynamic Vehicle Routing
 
 ## A study of allocation and scheduling for the Dynamic Vehicle Routing Problem
 
